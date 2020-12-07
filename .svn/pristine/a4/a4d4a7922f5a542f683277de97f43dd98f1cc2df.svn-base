@@ -1,0 +1,478 @@
+<template >
+  <div style="width: 100vw; height: 100vh">
+    <a-layout class="max-a-layout" id="components-layout-demo-top-side-2">
+      <!-- 网页头部信息模块 -->
+      <a-layout-header class="header">
+        <a-row align="middle">
+          <!-- 系统介绍 -->
+          <a-col :xs="2" :sm="4" :md="6" :lg="8" :xl="7"> </a-col>
+          <!-- 标题 -->
+          <a-col :xs="20" :sm="16" :md="12" :lg="8" :xl="10">
+            <h1 style="color: #7de2d8; margin-top: 1%; font-size: 2em">
+              红外图像智能诊断分析系统
+            </h1>
+          </a-col>
+          <!-- 右边的时间展示及下拉选择框 -->
+          <a-col :xs="2" :sm="4" :md="6" :lg="8" :xl="7">
+            <div class="timeBox" style="float: right">
+              <a-date-picker
+                class="nowTime"
+                :defaultValue="moment(getCurrentData(), 'YYYY-MM-DD')"
+                :showToday="false"
+                disabled
+              ></a-date-picker>
+              <!-- 右侧下拉框模块 -->
+              <a-dropdown>
+                <a class="AdministratorBox" @click="(e) => e.preventDefault()">
+                  管理员
+                  <a-icon type="down" />
+                </a>
+                <a-menu
+                  style="
+                    margin-top: 15px;
+                    background-color: #001529;
+                    color: #e6fffb;
+                  "
+                  slot="overlay"
+                  @click="onClick"
+                >
+                  <a-menu-item style="color: #e6fffb" key="1"
+                    >用户信息</a-menu-item
+                  >
+                  <a-menu-item style="color: #e6fffb" key="2"
+                    >安全设置</a-menu-item
+                  >
+                  <a-menu-item @click="close" style="color: #e6fffb" key="3"
+                    >退出登录</a-menu-item
+                  >
+                </a-menu>
+              </a-dropdown>
+           
+            </div>
+          </a-col>
+        </a-row>
+      </a-layout-header>
+
+      <!-------- 安全设置模块 -------->
+      <a-modal
+        v-model="visible2"
+        has-feedback
+        title="修改密码"
+        cancelText="取消"
+        okText="确认"
+        @ok="changPassword"
+      >
+        <a-form-model v-bind="layout" class="login-form">
+          <a-form-model-item label="用户id">
+            <a-input style="width: 60%" v-model="userId" />
+          </a-form-model-item>
+          <a-form-model-item has-feedback label="原始密码">
+            &nbsp;&nbsp;&nbsp;
+            <a-input style="width: 60%" v-model="oldPassWord" />
+          </a-form-model-item>    
+          <a-form-model-item has-feedback label="新密码">
+            <a-input style="width: 60%" v-model="newPassWord" />
+          </a-form-model-item>
+          <!-- <a-form-item>
+            <a-row>
+              <a-col :span="10"> </a-col>
+              <a-col :span="6">
+                <a-button @click="changPassword" type="primary">
+                  确认修改
+                </a-button>
+              </a-col>
+              <a-col :span="8"> </a-col>
+            </a-row>
+          </a-form-item> -->
+        </a-form-model> 
+      </a-modal>
+
+      <a-layout>
+        <!-- 左边的选择框内容 -->
+        <a-layout-sider collapsed-width="0" width="13%">
+          <a-menu
+            style="width: 100%; height: 100%"
+            :default-selected-keys="['1']"
+            :default-open-keys="['sub1']"
+            mode="inline"
+            :theme="theme"
+            :selected-keys="[current]"
+            @click="handleClick"
+          >
+            <!-- @click="gomainPage" -->
+            <a-menu-item @click="gofrist" key="1">
+              <a-icon type="home" />&#8197;首页
+            </a-menu-item>
+
+            <a-sub-menu key="task">
+              <span slot="title">
+                &#8197; &#8197; <a-icon type="solution" />
+                <span>检测任务</span>
+              </span>
+              <!-- @click="navigateToCreateTask" -->
+              <a-menu-item @click="gocreateTaskGroup" key="create">
+                &#8197;&#8197;待派发&#8197;&#8197;
+              </a-menu-item>
+              <!-- @click="navigateToExecuteTask" -->
+              <a-menu-item key="execute">
+                &#8197;&#8197;执行中&#8197;&#8197;
+              </a-menu-item>
+              <!-- @click="navigateToDoneTask" -->
+              <a-menu-item key="finish">
+                &#8197;&#8197;已完成&#8197;&#8197;
+              </a-menu-item>
+            </a-sub-menu>
+
+            <a-sub-menu key="detection">
+              <span slot="title">
+                &#8197; &#8197; <a-icon type="robot" />
+                <span>诊断管理</span>
+              </span>
+              <!-- @click="navigateToResultDiag" -->
+              <a-menu-item key="detection_result"> 诊断结果 </a-menu-item>
+            </a-sub-menu>
+
+            <a-sub-menu key="report">
+              <span slot="title">
+                &#8197; &#8197; <a-icon type="file-text" />
+                <span> 报告管理</span>
+              </span>
+              <!-- @click="goRTMbox" -->
+              <a-menu-item key="7"> 报告管理 </a-menu-item>
+            </a-sub-menu>
+            <!-- @click="goMDinformation" -->
+            <a-menu-item key="5">
+              <a-icon type="alert" />&#8197;缺陷管理
+            </a-menu-item>
+            <a-sub-menu key="user">
+              <span slot="title">
+                &#8197; &#8197; <a-icon type="file-text" />
+                <span> 用户管理</span>
+              </span>
+              <a-menu-item key="userInfo" @click="goUserinfo">
+                用户信息
+              </a-menu-item>
+              <a-menu-item key="role" @click="goRole"> 所有角色 </a-menu-item>
+            </a-sub-menu>
+            <!-- <a-menu-item key="help" @click="navigateToSystemHelper">
+          <a-icon type="build" />&#8197;&#8197;帮&#8197;&#8197;助&#8197;&#8197;
+        </a-menu-item>
+        <a-menu-item key="about" @click="navigateToSystemAbout">
+            <a-icon type="pull-request" />
+            &#8197;&#8197;关&#8197;&#8197;于&#8197;&#8197;
+        </a-menu-item> -->
+          </a-menu>
+        </a-layout-sider>
+        <!-- //内容面板部分  padding: '12px',style="padding: 0 12px 12px"-->
+        <a-layout>
+          <a-layout-content
+            :style="{
+              background: '#fff',
+              padding: '24px',
+              margin: 0,
+              minHeight: '280px',
+              overflow: 'initial',
+            }"
+          >
+            <div style="padding:15px;background:rgba(106, 213, 240, 0.2); height:480px; margin-top:-1%; margin-left:-1%; overflow-y:auto;">
+              <router-view></router-view>
+            </div>
+          </a-layout-content>
+
+          <a-layout-footer
+            style="height: 5%; text-align: center;"
+          >
+            Ant Design ©2018 Created by Ant UED
+          </a-layout-footer>
+        </a-layout>
+      </a-layout>
+    </a-layout>
+  </div>
+</template>
+
+<script>
+import moment from "moment";
+export default {
+  name: "home",
+
+  data() {
+    return {
+      current: "1",
+      theme: "dark",
+      collapsed: false,
+      visible1: false,
+      visible2: false,
+      visible3: false,
+      userId: "",
+      loginUserId: "",
+      oldPassWord: "",
+      newPassWord: "",
+      layout: {
+        labelCol: { span: 4 },
+        wrapperCol: { span: 14 },
+      },
+    };
+  },
+  computed: {
+    //  this.try();
+  },
+  methods: {
+    moment,
+    handleClick(e) {
+      // console.log("click ", e);
+      this.current = e.key;
+    },
+    getCurrentData() {
+      return new Date().toLocaleDateString();
+    },
+
+    // 响应("loginUserInformation")this.userId
+    onClick({ key }) {
+      if (key == 1) {
+         this.userId = this.$cookies.get("loginId"); 
+        this.$router.push({
+          path: "loginUser",
+          query: {
+            Id: this.userId,
+            queryName: "query",
+          },
+        });
+      } else if (key == 2) {
+        this.visible2 = true;
+      } else if (key == 3) {
+        this.visible3 = true;
+      }
+    },
+    // handleOk(e) {
+    //   this.visible1 = false;
+    //   this.visible2 = false;
+    // },
+
+    confirm(e) {
+      // this.$message.success("Click on Yes");
+    },
+
+    //修改密码
+    changPassword() {
+      this.$api.get(
+        "/User/updateUserPassWord",
+        {
+          userId: this.userId,
+          oldPassWord: this.oldPassWord,
+          newPassWord: this.newPassWord,
+        },
+        (r) => {
+          console.log(r);
+        }
+      );
+      this.visible1 = false;
+      this.visible2 = false;
+    },
+
+    // 系统的退出弹框
+    close() {
+      let t = this;
+      this.$confirm({
+        title: "退出登录",
+        content: "是否确认登录？",
+        okText: "确认",
+        cancelText: "取消",
+        onOk() {
+          t.$router.push("/");
+        },
+      });
+    },
+    gofrist() {
+      this.$router.push("/mainPage");
+    },
+    goUserinfo() {
+      this.$router.push("userinfo");
+    },
+    goRole() {
+      this.$router.push("/role");
+    },
+    gocreateTaskGroup() {
+      this.$router.push("/createTaskGroup");
+    },
+  },
+  // 页面载入时就转入该函数
+  mounted() {},
+};
+</script>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+}
+.max-a-layout {
+  height: 100%;
+  width: 100%;
+}
+
+.timeBox {
+  /* height: 25px; */
+  border-top: 1px solid #36cfc9;
+  border-bottom: 1px solid #36cfc9;
+}
+.timeBox .nowTime .ant-input[disabled] {
+  color: #36cfc9;
+  background-color: transparent;
+  border: none;
+ 
+}
+.nowTime{
+  /* margin-right:10% ; */
+}
+.ant-table {
+  text-align: center;
+  background-color:rgba(106, 213, 240, 0.1);
+}
+.AdministratorBox {
+  display: inline-block;
+  float: right;
+  color: #36cec9;
+}
+.ant-table table {
+  text-align: center;
+}
+.ant-table-thead > tr > th {
+    background-color:rgba(106, 213, 240, 0.1);
+  text-align: center;
+}
+.ant-table-pagination.ant-pagination {
+      margin: 8px 0;
+}
+
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-header
+  > table
+  > .ant-table-thead
+  > tr
+  > th,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-body
+  > table
+  > .ant-table-thead
+  > tr
+  > th,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-scroll
+  > .ant-table-header
+  > table
+  > .ant-table-thead
+  > tr
+  > th,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-scroll
+  > .ant-table-body
+  > table
+  > .ant-table-thead
+  > tr
+  > th,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-fixed-left
+  > .ant-table-header
+  > table
+  > .ant-table-thead
+  > tr
+  > th,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-fixed-right
+  > .ant-table-header
+  > table
+  > .ant-table-thead
+  > tr
+  > th,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-fixed-left
+  > .ant-table-body-outer
+  > .ant-table-body-inner
+  > table
+  > .ant-table-thead
+  > tr
+  > th,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-fixed-right
+  > .ant-table-body-outer
+  > .ant-table-body-inner
+  > table
+  > .ant-table-thead
+  > tr
+  > th,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-header
+  > table
+  > .ant-table-tbody
+  > tr
+  > td,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-body
+  > table
+  > .ant-table-tbody
+  > tr
+  > td,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-scroll
+  > .ant-table-header
+  > table
+  > .ant-table-tbody
+  > tr
+  > td,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-scroll
+  > .ant-table-body
+  > table
+  > .ant-table-tbody
+  > tr
+  > td,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-fixed-left
+  > .ant-table-header
+  > table
+  > .ant-table-tbody
+  > tr
+  > td,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-fixed-right
+  > .ant-table-header
+  > table
+  > .ant-table-tbody
+  > tr
+  > td,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-fixed-left
+  > .ant-table-body-outer
+  > .ant-table-body-inner
+  > table
+  > .ant-table-tbody
+  > tr
+  > td,
+.ant-table-small
+  > .ant-table-content
+  > .ant-table-fixed-right
+  > .ant-table-body-outer
+  > .ant-table-body-inner
+  > table
+  > .ant-table-tbody
+  > tr
+  > td {
+    font-size: 0.5em;
+    padding: 6px 6px;
+}
+</style>

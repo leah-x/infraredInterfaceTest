@@ -1,0 +1,125 @@
+<template>
+  <div>
+    <label><h1 style="font-size: 1.8em">个人信息</h1></label>
+    <a-form-model ref="dneg" style="margin-top: 3%" v-bind="layout">
+      <a-form-model-item has-feedback label="登录名" prop="pass">
+        <a-input v-model="loginName" autocomplete="off" disabled/>
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="密 码" prop="checkPass">
+        <a-input v-model="password" type="password" autocomplete="off" disabled/>
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="姓 名">
+        <a-input v-model="userTrueName" />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="电话号码">
+        <a-input v-model="phoneNumber" />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="创建时间">
+        <a-input v-model="createTime" disabled/>
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="备 注">
+        <a-input v-model="remark" />
+      </a-form-model-item>
+      <a-button type="primary" @click="editPassWord"> 修改密码 </a-button>
+    </a-form-model>
+
+    <!-------- 安全设置模块 -------->
+    <a-modal
+      v-model="visible2"
+      has-feedback
+      title="修改密码"
+      cancelText="取消"
+      okText="确认"
+      @ok="changPassword"
+    >
+      <a-form-model v-bind="layout" class="login-form">
+        <a-form-model-item label="原始密码">
+          <a-input style="width: 60%" v-model="oldPassWord" />
+        </a-form-model-item>
+        <a-form-model-item has-feedback label="新密码">
+          &nbsp;&nbsp;&nbsp;
+          <a-input style="width: 60%" v-model="newPassWord" />
+        </a-form-model-item>
+        <a-form-model-item has-feedback label="确认新密码">
+          <a-input style="width: 60%" v-model="renewPassWord" />
+        </a-form-model-item>
+      </a-form-model>
+    </a-modal>
+  </div>
+</template>
+
+<script>
+import user from "../../netapi/user";
+export default {
+  name: "loginUser",
+  data() {
+    let checkPending;
+    return {
+      loginName: "",
+      password: "",
+      userTrueName: "",
+      phoneNumber: "",
+      createTime: "",
+      visible2: false,
+      userId: "",
+      remark: "",
+      layout: {
+        labelCol: { span: 4 },
+        wrapperCol: { span: 14 },
+      },
+      oldPassWord: "",
+      newPassWord: "",
+      renewPassWord: "",
+    };
+  },
+  methods: {
+    editPassWord() {
+      this.visible2 = true;
+    },
+    //修改密码
+    changPassword() {
+
+      this.$api.get(
+        "/User/updateUserPassWord",
+        {
+          userId: this.userId,
+          oldPassWord: this.oldPassWord,
+          newPassWord: this.newPassWord,
+        },
+        (r) => {
+          // console.log(r);
+        }
+      );
+      this.visible2 = false;
+    },
+  },
+  // 页面载入时就转入该函数
+  mounted() {
+    if (this.$route.query.Id != null) {
+      this.userId = this.$route.query.Id;
+    } else if (this.$route.query.Id == "") {
+      this.userId = this.$cookies.get("loginId");
+    }
+    // 加载用户信息
+    user
+      .getUserInfoByIdG({
+        useId: this.userId,
+      })
+      .then((data) => {
+        var js = JSON.parse(data.result);
+        //   console.log(js);
+        this.loginName = js.loginName;
+        this.password = js.password;
+        this.userTrueName = js.userTrueName;
+        this.phoneNumber = js.phoneNumber;
+        this.createTime = js.createTime;
+        this.remark = js.remark;
+      });
+  },
+};
+</script>
+
+<style>
+* {
+}
+</style>

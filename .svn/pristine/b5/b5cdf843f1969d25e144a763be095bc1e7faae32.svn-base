@@ -1,0 +1,89 @@
+<template>
+  <div>
+    <a-row>
+      <a-descriptions style="background:white" bordered v-if="flaw" title="缺陷详情">
+        <a-descriptions-item :span="2" label="缺陷部件">
+          {{flaw.flawDevice }}
+        </a-descriptions-item>
+        <a-descriptions-item :span="2" label="缺陷类型">
+          {{ flaw.type == 1?"一般缺陷" :"异常" }}
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="缺陷描述">
+          {{ flaw.flawDesp }}
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="处理建议">
+          {{ flaw.dealSuggest }}
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="创建时间">
+          {{ flaw.createTime }}
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="缺陷可见光图">
+          <a-avatar shape="square" :size="200" :src="flaw.picture" />
+          <!-- <img style="" :src="flaw.picture"/> -->
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="缺陷红外图">
+          <a-avatar shape="square" :size="200" :src="flaw.redPicture" />
+          <!-- <img :src="flaw.redPicture" /> -->
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="备注">
+          {{ flaw.remark }}
+        </a-descriptions-item>
+      </a-descriptions>
+    </a-row>
+  </div>
+</template>
+
+<script>
+import diag from "../../netapi/diag";
+
+export default {
+  name: "flawDetail",
+  data() {
+    return {
+      id: null,
+      flaw: null,
+    };
+  },
+  methods: {
+    /**
+     * 根据id获取缺陷
+     * @param id
+     */
+    getFlawById(id) {
+      diag
+        .getFlawById({
+          id: id,
+        })
+        .then((data) => {
+          if (data.code === "200") {
+            // 直接获取对象
+            this.flaw = JSON.parse(data.result);
+            //  console.log( this.flaw.flawDevice);
+            // fixme 图片暂时使用固定的地址
+            this.flaw.picture = "http://81.68.252.160:8081/static/3.jpg";
+            this.flaw.redPicture = "http://81.68.252.160:8081/static/4.jpg";
+          } else {
+            this.$message.info(data.message);
+          }
+        })
+        .catch((err) => {
+          this.$message.error(this.NETWORK_ERROR_MESSAGE);
+          console.log(err);
+        });
+    },
+    /**
+     * 接收id参数并获取对应缺陷
+     */
+    receiveIdAndGetFlaw() {
+      this.id = this.$route.query.id;
+      this.getFlawById(this.id);
+    },
+  },
+  beforeMount() {
+    this.receiveIdAndGetFlaw();
+  },
+};
+</script>
+
+<style scoped>
+</style>

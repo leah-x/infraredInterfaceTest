@@ -1,0 +1,85 @@
+<template>
+  <div>
+    <a-row>
+      <a-descriptions bordered title="缺陷详情" >
+        <a-descriptions-item :span="2" label="缺陷部件">
+          {{flaw.flawDevice}}
+        </a-descriptions-item>
+        <a-descriptions-item :span="2" label="缺陷类型">
+          {{flaw.type}}
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="缺陷描述">
+          {{flaw.flawDesp}}
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="处理建议">
+          {{flaw.dealSuggest}}
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="创建时间">
+          {{flaw.createTime}}
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="缺陷可见光图">
+          <img :src="flaw.picture"/>
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="缺陷红外图">
+          <img :src="flaw.redPicture"/>
+        </a-descriptions-item>
+        <a-descriptions-item :span="3" label="备注">
+          {{flaw.remark}}
+        </a-descriptions-item>
+      </a-descriptions>
+    </a-row>
+  </div>
+</template>
+
+<script>
+
+import diag from "../../netapi/diag";
+
+export default {
+  name: "flawDetail",
+  data(){
+    return{
+      id:null,
+      flaw: null,
+    }
+  },
+  methods:{
+    /**
+     * 根据id获取缺陷
+     * @param id
+     */
+    getFlawById(id){
+      diag.getFlawById({
+        id:id
+      }).then(data=>{
+        if (data.code==="200"){
+          // 直接获取对象
+          this.flaw=JSON.parse(data.result);
+          // fixme 图片暂时使用固定的地址
+          this.flaw.picture="http://192.168.1.201:8900/3.jpg";
+          this.flaw.redPicture="http://192.168.1.201:8900/4.jpg";
+        }else{
+          this.$message.info(data.message)
+        }
+      }).catch(err=>{
+        this.$message.error(this.NETWORK_ERROR_MESSAGE);
+        console.log(err)
+      })
+    },
+    /**
+     * 接收id参数并获取对应缺陷
+     */
+    receiveIdAndGetFlaw(){
+      this.id=this.$route.query.id;
+      this.getFlawById(this.id);
+    }
+  },
+  beforeMount() {
+    this.receiveIdAndGetFlaw();
+  }
+}
+</script>
+
+<style scoped>
+
+</style>

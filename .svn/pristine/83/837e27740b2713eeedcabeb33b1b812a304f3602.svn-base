@@ -1,0 +1,77 @@
+<template>
+  <div>
+    <label><h1 style="font-size: 1.8em">个人信息</h1></label>
+    <a-form-model ref="dneg" style="margin-top: 3%" v-bind="layout">
+      <a-form-model-item has-feedback label="登录名" prop="pass">
+        <a-input v-model="loginName" autocomplete="off" />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="密 码" prop="checkPass">
+        <a-input v-model="password" type="password" autocomplete="off" />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="姓 名">
+        <a-input v-model="userTrueName" />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="电话号码">
+        <a-input v-model="phoneNumber" />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="创建时间">
+        <a-input v-model="createTime" />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="备 注">
+        <a-input v-model="remark" />
+      </a-form-model-item>
+    </a-form-model>
+  </div>
+</template>
+
+<script>
+import user from "../../netapi/user";
+export default {
+  name: "loginUser",
+  data() {
+    let checkPending;
+    return {
+      loginName: "",
+      password: "",
+      userTrueName: "",
+      phoneNumber: "",
+      createTime: "",
+      userId: "",
+      remark: "",
+      layout: {
+        labelCol: { span: 4 },
+        wrapperCol: { span: 14 },
+      },
+    };
+  },
+  methods: {},
+  // 页面载入时就转入该函数
+  mounted() {
+    if (this.$route.query.Id != null) {
+      this.userId = this.$route.query.Id;
+    } else if (this.$route.query.Id == "") {
+      this.userId = this.$cookies.get("loginId");
+    }
+    // 加载用户信息
+    user
+      .getUserInfoByIdG({
+        useId: this.userId,
+      })
+      .then((data) => {
+        var js = JSON.parse(data.result);
+        //   console.log(js);
+        this.loginName = js.loginName;
+        this.password = js.password;
+        this.userTrueName = js.userTrueName;
+        this.phoneNumber = js.phoneNumber;
+        this.createTime = js.createTime;
+        this.remark = js.remark;
+      });
+  },
+};
+</script>
+
+<style>
+* {
+}
+</style>

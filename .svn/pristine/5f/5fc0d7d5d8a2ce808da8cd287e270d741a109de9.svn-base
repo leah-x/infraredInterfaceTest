@@ -1,0 +1,255 @@
+<template>
+  <div>
+    <a-row type="flex" justify="space-between" align="middle" class="search">
+      <a-col :span="6">
+        <!--   -->
+        <a-input-search
+          style="width: 80%; margin-left: -20%"
+          placeholder="按照任务名搜索"
+          enter-button
+          size="small"
+          v-decorator="[
+            'searchValue',
+            { rules: [{ required: false, message: 'taskName' }] },
+          ]"
+        />
+      </a-col>
+      <a-col :span="6">
+        <a-date-picker
+          size="small"
+          style="width: 80%; margin-left: -20%"
+          placeholder="搜索这个时间点后的任务"
+          @change="onDateAfterSearch"
+        />
+      </a-col>
+      <a-col :span="6">
+        <a-date-picker
+          size="small"
+          style="width: 80%; margin-left: -20%"
+          placeholder="搜索这个时间点前的任务"
+          @change="onDateBeforeSearch"
+        />
+      </a-col>
+      <a-col :span="6">
+        <a-button
+          size="small"
+          style="margin-right: -70%"
+          @click="demo"
+          type="primary"
+          >模板创建</a-button
+        >
+      </a-col>
+    </a-row>
+    <a-table
+      :row-selection="{
+        selectedRowKeys: selectedRowKeys,
+        onChange: onSelectChange,
+      }"
+      size="small"
+      style="margin-top: 10px"
+      :columns="columns"
+      :rowKey="(record) => record.id"
+      :data-source="dataSource"
+      :pagination="pagination"
+    >
+     <span slot="num" slot-scope="text, record, index">
+        {{
+          (pagination.current - 1) * pagination.pageSize + parseInt(index) + 1
+        }}
+      </span>
+       <span slot="taskState" slot-scope="text">
+        <a-tag :color="text ==2 ?  'green':'red' ">
+          {{ text == 2 ? "执行中" : "有效" }}
+        </a-tag>
+      </span>
+    </a-table>
+  </div>
+</template>
+
+<script>
+import Task from "../../netapi/task";
+const columns = [
+  {
+    title: "序号",
+    dataIndex: "num",
+    scopedSlots: { customRender: "num" },
+  },
+ {
+    title: "所属任务组",
+    dataIndex: "belongTaskGroup",
+  },
+  {
+    title: "任务名",
+    dataIndex: "taskName",
+  },
+  {
+    title: "创建时间",
+    dataIndex: "createTime",
+  },
+  {
+    title: "状态",
+    dataIndex: "taskState",
+    scopedSlots: { customRender: "taskState" },
+  },
+  // {
+  //   title: "管理",
+  //   key: "Action",
+  //   scopedSlots: { customRender: "action" },
+  // },
+];
+
+
+export default {
+  name: "ExecuteTask",
+  // inject: ["reload"], //这里是为了实现组件局部刷新注入的reload
+  data() {
+    return {
+      selectedRowKeys: [], // Check here to configure the default column
+      ids: [],
+      dataSource: [], //数据源
+      pagination: {},
+      columns,
+      form: this.$form.createForm(this),
+      searchValue: "",
+      //高级搜索  展开/关闭
+      advanced: false,
+      //查询参数
+      queryParam: {},
+      // 加载数据的方法  必须是promise 对象
+      loadData: (parameter) => {
+        parameter.page = parameter.pageNo;
+        Object.assign(parameter, this.queryParam);
+        return getOrderList(parameter).then((res) => {
+          this.orderTotal = res.result.totalCount;
+          return res.result;
+        });
+      },
+    };
+  },
+  searchType: "",
+  searchValue: "",
+  mounted() {
+    this.refresh();
+  },
+ methods: {
+    //重置数据
+    reset() {
+      this.form.resetFields();
+      this.reload();
+    },
+    handleChange(value) {
+      this.searchType = value;
+    },
+
+    search(e) {
+      e.preventDefault();
+      this.form.validateFields((err, values) => {
+        if (!err) {
+          if (values.buildTime && values.buildTime.length != 0) {
+            //这里是获取选择的起止时间，下面方法比较麻烦，你可以自行处理，获取到即可
+            var d = new Date(values.buildTime[0]._d);
+            var o = new Date(values.buildTime[1]._d);
+            let start_time =
+              d.getFullYear() +
+              "-" +
+              (d.getMonth() + 1) +
+              "-" +
+              d.getDate() +
+              " " +
+              "00" +
+              ":" +
+              "00" +
+              ":" +
+              "00";
+            let end_time =
+              o.getFullYear() +
+              "-" +
+              (o.getMonth() + 1) +
+              "-" +
+              o.getDate() +
+              " " +
+              "23" +
+              ":" +
+              "59" +
+              ":" +
+              "59";
+            values.start_time = start_time;
+            values.end_time = end_time;
+          }
+          //通过加载数据方法loadData你会发现，我们传进了参数queryParam，
+          //就是在这里组装好赋值给我们定义的queryParam
+          //这里是比较简单的，主要是数据的驱动工作已经给封装好了，我们做的仅仅是在这里组装好查询参数即可
+          this.queryParam = {
+            start_time: values.start_time,
+            end_time: values.end_time,
+            type: values.type,
+            searchType: values.searchType,
+            searchValue: values.searchValue,
+          };
+          //这个地方你可以加上一个延时器，loading效果会形象一点，也可以不加
+          this.$refs.stable.refresh(); // refresh() 不传参默认值 false 不刷新到分页第一页
+          //setTimeout(() => {
+          //  this.$refs.stable.refresh() // refresh() 不传参默认值 false 不刷新到分页第一页
+          //}, 500)
+        }
+      });
+    },
+
+    onSelectChange(selectedRowKeys) {
+      console.log("selectedRowKeys changed: ", selectedRowKeys);
+      this.selectedRowKeys = selectedRowKeys;
+    },
+    onSearchByTaskName(value) {},
+    // 按照给定的值进行查询
+    handleSearch(selectedKeys, confirm, dataIndex) {
+      confirm();
+      this.searchText = selectedKeys[0];
+      this.searchedColumn = dataIndex;
+    },
+    editItem(id) {
+      this.$router.push({
+        path: "/EditExecuteTask",
+        query: {
+          taskId: id,
+        },
+      });
+    },
+    onDateBeforeSearch(before) {
+      console.log(before.toString());
+    },
+    onDateAfterSearch(after) {
+      console.log(after.toString());
+    },
+    demo() {
+      this.$router.push("/createTaskGroup");
+    },
+    //刷新整个页面
+    refresh() {
+      var userId = this.$cookies.get("loginId");
+      this.pagination.current = 1;
+      Task.getTaskPageG({
+        userId: userId,
+        state: 2,
+      }).then((r) => {
+        console.log(r);
+        var js = JSON.parse(r.result);
+        // console.log(js.list);
+        // 这里得到的数据就只有10个
+        const pagination = { ...this.pagination }; //重新定义获取新的页面
+        //  console.log(js);
+        // 读取总的数据量是12个
+        pagination.total = js.total;
+        pagination.pageSize = js.pageSize;
+        this.loading = false;
+        this.dataSource = js.list; //把数据装进table里面
+        // console.log(js.list);
+        this.pagination = pagination; //获取
+        // console.log(this.pagination);
+      });
+    },
+  },
+};
+</script>
+
+<style scoped>
+</style>

@@ -1,0 +1,204 @@
+<template>
+  <div>
+    <a-row type="flex" justify="start" align="middle" class="search">
+      <a-col>
+        <a-input-search
+          placeholder="按照组名搜索"
+          enter-button
+          @search="onSearchByTaskGroupName"
+        />
+      </a-col>
+      <a-col>
+        <a-dropdown>
+          <a-menu slot="overlay" @click="switchSortWay">
+            <a-menu-item key="0">
+              <a-icon type="right" />{{ sortWay[0] }}</a-menu-item
+            >
+            <a-menu-item key="1">
+              <a-icon type="right" />{{ sortWay[1] }}</a-menu-item
+            >
+            <a-menu-item key="2">
+              <a-icon type="right" />{{ sortWay[2] }}</a-menu-item
+            >
+            <a-menu-item key="3">
+              <a-icon type="right" />{{ sortWay[3] }}</a-menu-item
+            >
+          </a-menu>
+          <a-button style="margin-left: 8px">
+            {{ currentWay }} <a-icon type="down" />
+          </a-button>
+        </a-dropdown>
+      </a-col>
+      <a-col style="margin-left: 8px">
+        <a-button-group>
+
+          <a-button @click="refresh" type="primary"> 刷新 </a-button>
+        </a-button-group>
+      </a-col>
+    </a-row>
+    <a-table
+      style="margin-top: 8px"
+      :columns="columns"
+      :data-source="data"
+      :pagination="pagination"
+      @change="handleTableChange"
+      
+    >
+      <!-- @change="simplePageChange" -->
+      <span slot="num" slot-scope="text, record, index">
+        {{ (pagination.current - 1) * pagination.pageSize + parseInt(index) + 1 }}
+      </span>
+      <!-- :pagination="false" -->
+      <span slot="action" slot-scope="text, record">
+        <a
+          @click="viewItem(record.groupId)"
+          :disabled="record.state !== `已完成`"
+          >详情</a
+        >
+      </span>
+    </a-table>
+  </div>
+</template>
+
+<script>
+const columns = [
+  {
+    title: "序号",
+    dataIndex: "num",
+    scopedSlots: { customRender: "num" },
+  },
+  {
+    title: "任务组名",
+    dataIndex: "groupName",
+  },
+  {
+    title: "总任务数",
+    dataIndex: "numbers",
+  },
+  {
+    title: "执行中",
+    dataIndex: "executingNumber",
+  },
+  {
+    title: "已完成",
+    dataIndex: "finishNumber",
+  },
+  {
+    title: "正常任务",
+    dataIndex: "abnormalNumber",
+  },
+  {
+    title: "异常任务",
+    dataIndex: "unAbnormalNumber",
+  },
+  {
+    title: "状态",
+    dataIndex: "state",
+  },
+  {
+    title: "管理",
+    key: "groupId",
+    scopedSlots: { customRender: "action" },
+  },
+];
+
+import Diag from "../../netapi/diag";
+
+export default {
+  name: "TaskGroupDiagInfo",
+  data() {
+    return {
+      columns,
+      data: [],
+      pagination:{},
+      currentWay: "默认排序",
+      sortWay: [
+        "默认排序",
+        "按照执行中任务数排序",
+        "只看已完成的任务",
+        "只看执行中的任务",
+      ],
+    };
+  },
+  methods: {
+    /**
+     * 查看详情 跳转到任务组完成详情界面 todo
+     * @param id 对应任务组id
+     **/
+    viewItem(id) {
+      this.$message.info("跳转到id为" + id + "任务组已完成详情页！");
+    },
+    /**
+     * 根据任务组名进行搜索
+     * @param value 搜索字符
+     **/
+    onSearchByTaskGroupName(value) {},
+    /**
+     * 获取页面数据
+     * @param page 页码
+     * @param pagesize 页大小
+     **/
+    refresh() {
+      this.pagination.current = 1;
+      Diag.getTaskGroupDiagInfo({
+        userId: this.$cookies.get("loginId"),
+      })
+        .then((data) => {
+          if (data.code === "200") {
+            // 循环执行生成对象
+            let result = JSON.parse(data.result);
+            //  this.pageInfo.current = result.pageNum;
+            this.pagination.pageSize = result.pageSize;
+            this.pagination.total = result.total;
+            // 抽取实际数组组合
+            this.data = result.list;
+          } else {
+            this.$message.info(data.message);
+          }
+        })
+        .catch((err) => {
+          this.$message.error(this.NETWORK_ERROR_MESSAGE);
+          console.log(err);
+        });
+    },
+
+    /**
+     *点击某一页面时，网页加载到当前的数据
+     *
+     **/
+    handleTableChange(pagination, filters, sorter) {
+      const pager = { ...this.pagination };
+      pager.current = pagination.current;
+      this.pagination = pager;
+      Diag.getTaskGroupDiagInfo({
+        page: this.pagination.current,
+        userId: this.$cookies.get("loginId"),
+      }).then((r) => {
+        var js = JSON.parse(r.result);
+        // 这里得到的数据就只有10个
+        const pagination = { ...this.pagination }; //重新定义获取新的页面
+        // 读取总的数据量是12个
+        pagination.total = js.total;
+         pagination.pageSize=js.pageSize;
+        this.data = js.list; //把数据装进table里面
+        this.pagination = pagination; //获取
+      });
+    },
+
+    /**
+     * 切换任务排序方式
+     * @param way 排序方式
+     */
+    switchSortWay(way) {
+      this.currentWay = this.sortWay[way.key];
+    },
+  },
+  created() {
+    // 进入此页面即获取页面数据
+    this.refresh();
+  },
+};
+</script>
+
+<style scoped>
+</style>

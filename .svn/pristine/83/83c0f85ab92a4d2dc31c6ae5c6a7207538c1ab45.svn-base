@@ -1,0 +1,51 @@
+<template>
+  <div>
+    缺陷页面
+  </div>
+</template>
+
+<script>
+
+import diag from "../../netapi/diag";
+
+export default {
+  name: "flawDetail",
+  data(){
+    return{
+      id:null,
+      flaw:null,
+    }
+  },
+  methods:{
+    /**
+     * 根据id获取缺陷
+     * @param id
+     */
+    getFlawById(id){
+      diag.getFlawById({
+        id:id
+      }).then(data=>{
+        if (data.code==="200"){
+          // 直接获取对象
+          this.flaw=JSON.parse(data.result);
+          console.log(this.flaw)
+        }else{
+          this.$message.info(data.message)
+        }
+      }).catch(err=>{
+        this.$message.error(this.NETWORK_ERROR_MESSAGE);
+        console.log(err)
+      })
+    }
+  },
+  beforeMount() {
+    // 获取传过来的参数并请求此缺陷
+    this.id=this.$route.query.id;
+    this.getFlawById(this.id);
+  }
+}
+</script>
+
+<style scoped>
+
+</style>

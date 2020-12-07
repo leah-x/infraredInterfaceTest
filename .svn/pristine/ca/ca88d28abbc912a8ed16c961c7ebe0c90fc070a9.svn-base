@@ -1,0 +1,193 @@
+<template>
+  <div>
+    <a-row type="flex"
+           justify="start"
+           align="middle"
+           class="search"
+    >
+      <a-col >
+        <a-input-search
+          placeholder="按照报告名搜索"
+          enter-button
+          @search="onSearchByTaskGroupName" />
+      </a-col>
+      <a-col>
+        <a-dropdown>
+          <a-menu slot="overlay" @click="switchSortWay">
+            <a-menu-item key="0"> <a-icon type="right" />{{sortWay[0]}}</a-menu-item>
+            <a-menu-item key="1"> <a-icon type="right" />{{sortWay[1]}}</a-menu-item>
+            <a-menu-item key="2"> <a-icon type="right" />{{sortWay[2]}}</a-menu-item>
+            <a-menu-item key="3"> <a-icon type="right" />{{sortWay[3]}}</a-menu-item>
+          </a-menu>
+          <a-button style="margin-left: 8px"> {{currentWay}} <a-icon type="down" /> </a-button>
+        </a-dropdown>
+      </a-col>
+      <a-col style="margin-left: 8px">
+        <a-button-group>
+          <a-button @click="refreshThisPage" type="primary">
+            刷新
+          </a-button>
+        </a-button-group>
+      </a-col>
+    </a-row>
+    <a-table
+      style="margin-top: 8px"
+      @change="simplePageChange"
+      :pagination="pageInfo"
+      :columns="columns"
+      :data-source="data"
+    >
+      <span slot="action" slot-scope="text, record, index">
+      <a-button
+        type="primary"
+        size="small"
+        @click="downLoadFile(record.id)"
+        :disabled="record.state!==2"
+      >
+        {{record.state===1?"生成中":"下载"}}
+      </a-button>
+    </span>
+    </a-table>
+  </div>
+</template>
+
+<script>
+
+const columns = [
+  {
+    title:'序号',
+    dataIndex: 'index',
+  },
+  {
+    title: '报告名',
+    dataIndex: 'name',
+  },
+  {
+    title: '报告类型',
+    dataIndex: 'type',
+  },
+  {
+    title: '模板类型',
+    dataIndex: 'model',
+  },
+  {
+    title: '下载',
+    key:'state',
+    scopedSlots: { customRender: 'action' },
+  }
+];
+
+import Report from "../../netapi/report"
+
+
+export default {
+  name: "reportShow",
+  data(){
+    return{
+      columns,
+      data:[],
+      pageInfo:{
+        current:1,
+        size:10,
+        total:0,
+      },
+      currentWay:"默认排序",
+      sortWay:[
+        "默认排序",
+        "已生成",
+        "正在生成",
+        "已失效",
+      ]
+    }
+  },
+  methods:{
+    /**
+     * 下载文件 todo
+     * @param id 对应报告id
+     **/
+    downLoadFile(id){
+      console.log(id)
+    },
+    /**
+     * 根据报告名进行搜索
+     * @param value 搜索字符
+     **/
+    onSearchByTaskGroupName(value){
+
+    },
+    /**
+     * 获取页面数据
+     * @param page 页码
+     * @param pagesize 页大小
+     **/
+    simplePageChange(page,pagesize){
+      Report.getReportPage({
+        page: page,
+        size: pagesize,
+        userId: this.$cookies.get("loginId"),
+        state:-1,
+        type:-1,
+      }).then(data=>{
+        if (data.code==="200"){
+          // 循环执行生成对象
+          let result=JSON.parse(data.result);
+          // 拼接分页对象
+          this.stringPageInfo(result);
+          // 抽取实际数组组合
+          let list=result.list;
+          // 数据置空
+          this.data=[];
+          for (let i = 0; i < list.length ; i++) {
+            let bean=list[i];
+            console.log(JSON.stringify(bean))
+            this.data.push({
+              index: i+1,
+              key:bean.id,
+              name:bean.name,
+              type:bean.type===1?"单条报告":"多条报告",
+              model:bean.model===1?"默认模板":"模板1",
+              remark:bean.remark,
+              state:bean.state
+            });
+          }
+        }else{
+          this.$message.info(data.message)
+        }
+      }).catch(err=>{
+        this.$message.error(this.NETWORK_ERROR_MESSAGE);
+        console.log(err)
+      })
+    },
+    /**
+     * 拼接分页对象
+     * @param result
+     */
+    stringPageInfo(result){
+      this.pageInfo.current=result.pageNum;
+      this.pageInfo.size=result.pageSize;
+      this.pageInfo.total=result.total;
+    },
+    /**
+     * 切换任务排序方式
+     * @param way 排序方式
+     */
+    switchSortWay(way){
+      this.currentWay=this.sortWay[way.key];
+    },
+    /**
+     * 刷新这个页面
+     */
+    refreshThisPage(){
+      this.simplePageChange(this.pageInfo.current,this.pageInfo.size)
+    }
+  },
+  created() {
+    // 进入此页面即获取页面数据
+    this.simplePageChange(1,10)
+  }
+}
+</script>
+
+<style scoped>
+
+</style>

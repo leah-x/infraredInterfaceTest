@@ -1,0 +1,170 @@
+<template>
+  <div style=" overflow-y: auto; ">
+    <span style=" float:left; color:black; width:8%; font-size: 1.2em;" @click="goBack">
+       <a-icon  type="left"  />返回上层
+      </span>  
+        <label style="width:8%;"><span style="font-size: 1.8em; ">个人信息</span></label>
+    <a-form-model ref="dneg" style="margin-top: 3%" v-bind="layout">
+      <a-form-model-item has-feedback label="登录名" prop="pass">
+        <a-input v-model="loginName" autocomplete="off" disabled />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="密 码" prop="checkPass">
+        <a-input
+          v-model="password"
+          type="password"
+          autocomplete="off"
+          disabled
+        />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="姓 名">
+        <a-input v-model="userTrueName" />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="电话号码">
+        <a-input v-model="phoneNumber" />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="创建时间">
+        <a-input v-model="createTime" disabled />
+      </a-form-model-item>
+      <a-form-model-item has-feedback label="备 注">
+        <a-input v-model="remark" />
+      </a-form-model-item>
+      <a-button type="primary" @click="editPassWord"> 修改密码 </a-button>
+    </a-form-model>
+
+    <!-------- 安全设置模块 -------->
+    <a-modal
+      v-model="visible2"
+      has-feedback
+      title="修改密码"
+      cancelText="取消"
+      okText="确认"
+      @ok="changPassword"
+    >
+      <a-form-model
+        v-bind="layout"
+        :model="form"
+        :rules="rules"
+        class="login-form"
+      >
+        <a-form-model-item label="原始密码">
+          <a-input style="width: 60%" v-model="oldPassWord" />
+        </a-form-model-item>
+        <a-form-model-item prop="newPassWord" has-feedback label="新密码">
+          &nbsp;&nbsp;&nbsp;
+          <a-input style="width: 60%" v-model="form.newPassWord" />
+        </a-form-model-item>
+        <a-form-model-item prop="renewPassWord" has-feedback label="确认新密码">
+          <a-input style="width: 60%" v-model="form.renewPassWord" />
+        </a-form-model-item>
+      </a-form-model>
+    </a-modal>
+  </div>
+</template>
+
+<script>
+import user from "../../netapi/user";
+export default {
+  name: "loginUser",
+  data() {
+    let checkPending;
+    return {
+      loginName: "",
+      password: "",
+      userTrueName: "",
+      phoneNumber: "",
+      createTime: "",
+      visible2: false,
+      userId: "",
+      remark: "",
+      layout: {
+        labelCol: { span: 6},
+        wrapperCol: { span: 13 },
+      },
+      rules: {
+        newPassWord: [
+          {
+            min: 8,
+            max: 16,
+            pattern: /^[\u4e00-\u9fa5a-zA-Z0-9\w]+$/g,
+            message: "长度为8~16",
+            trigger: "change",
+          },
+        ],
+        renewPassWord: [
+          {
+            min: 8,
+            max: 16,
+            pattern: /^[\u4e00-\u9fa5a-zA-Z0-9\w]+$/g,
+            message: "长度为8~16",
+            trigger: "change",
+          },
+        ],
+      },
+      form: {
+        newPassWord: "",
+        renewPassWord: "",
+      },
+      oldPassWord: "",
+    };
+  },
+  methods: {
+    /**
+     **返回上一层的路由
+     * 
+     **/
+    goBack(){
+      this.$router.go(-1);
+    },
+    editPassWord() {
+      this.visible2 = true;
+    },
+    //修改密码
+    changPassword() {
+      if (this.form.newPassWord == this.form.renewPassWord) {
+        user
+          .updateUserPassWordG({
+            userId: this.userId,
+            oldPassWord: this.oldPassWord,
+            newPassWord: this.form.newPassWord,
+          })
+          .then((r) => {
+            // console.log(r);
+          });
+          this.visible2 = false;
+      }else{
+         this.$message.error("与新密码不一致");
+      }
+
+      
+    },
+  },
+  // 页面载入时就转入该函数
+  mounted() {
+    if (this.$route.query.Id != null) {
+      this.userId = this.$route.query.Id;
+    } else if (this.$route.query.Id == "") {
+      this.userId = this.$cookies.get("loginId");
+    }
+    // 加载用户信息
+    user
+      .getUserInfoByIdG({
+        useId: this.userId,
+      })
+      .then((data) => {
+        var js = JSON.parse(data.result);
+        // console.log(js);
+        this.loginName = js.loginName;
+        this.password = js.password;
+        this.userTrueName = js.userTrueName;
+        this.phoneNumber = js.phoneNumber;
+        this.createTime = js.createTime;
+        this.remark = js.remark;
+      });
+  },
+};
+</script>
+
+<style>
+* {
+}
+</style>

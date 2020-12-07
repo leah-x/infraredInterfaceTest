@@ -1,0 +1,435 @@
+<template>
+  <div>
+    <a-row type="flex" justify="start" style="height: 48px">
+      <a-col :span="16">
+          <a-input-search
+          placeholder="按照任务组名搜索"
+          size="small"
+          style="width:25%; margin-left: -25%"
+          enter-button
+          @search="onSearchByTaskGroupName"
+        />
+         <!-- style="margin-left: -50%" -->
+        <a-button
+          size="small"
+          class="editable-add-btn"
+          @click="handleAdd"
+        >
+          创建任务组
+        </a-button>
+        <a-modal
+          v-model="addVisible"
+          ok-text="确认"
+          cancel-text="取消"
+          @ok="hideModal"
+        >
+          <a-form-model ref="ruleForm" v-bind="layout">
+            <a-form-model-item has-feedback label="任务组名">
+              <a-input v-model="groupName" autocomplete="off" />
+            </a-form-model-item>
+            <a-form-model-item has-feedback label="备注">
+              <a-input v-model="remark" type="" autocomplete="off" />
+            </a-form-model-item>
+          </a-form-model>
+        </a-modal>
+        <a-button type="primary" size="small" @click="upGroup()">
+          批量上传选中任务组
+        </a-button>
+        <a-button type="danger" size="small" @click="onSelectDelete">
+          批量删除选中任务组
+        </a-button>
+      </a-col>
+    </a-row>
+    <a-table
+      :row-selection="{
+        selectedRowKeys: selectedRowKeys,
+        onChange: onSelectChange,
+      }"
+      :pagination="pagination"
+      :rowKey="(record) => record.id"
+      :data-source="dataSource"
+      :columns="columns"
+      @change="handleTableChange"
+    >
+      <span slot="num" slot-scope="text, record, index">
+        {{
+          (pagination.current - 1) * pagination.pageSize + parseInt(index) + 1
+        }}
+      </span>
+       <span slot="state" slot-scope="text">
+        <a-tag :color="text == 1 ? 'red' : 3 ? 'green':'orange'">
+          {{ text == 1 ? "待处理" : 3 ? "已完工":"执行中" }}
+    
+        </a-tag> 
+      </span>
+
+      <a-button-group slot="operation" slot-scope="text, record, index">
+        <!-- 确认删除弹出框 -->
+        <a-button size="small" type="primary" @click="viewItem(index)"
+          >详情
+        </a-button>
+        <!-- 修改用户详情 -->
+        <a-button size="small" @click="onEdit(index)">修改 </a-button>
+
+        <!-- 每个用户的详情 -->
+        <a-button size="small" type="danger" @click="onDelete(index)"
+          >删除
+        </a-button>
+      </a-button-group>
+    </a-table>
+    <!-- 修改任务组的对话框 -->
+    <a-modal
+      v-model="EditVisible"
+      ok-text="确认修改"
+      cancel-text="取消"
+      title="修改任务组"
+      @ok="Edit()"
+    >
+      <a-form :label-col="{ span: 5 }" :wrapper-col="{ span: 12 }">
+        <a-form-item label="任务组名">
+          <!-- :defaultValue="" -->
+          <a-input v-model="groupNameValue"   />
+        </a-form-item>
+        <a-form-item label="备  注">
+          <a-input v-model="ramarkValue" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+  </div>
+</template>
+
+<script>
+import task from "../../netapi/task";
+import Task from "../../netapi/task";
+export default {
+  name: "createTaskGroup",
+  data() {
+    return {
+      selectedRowKeys: [], // Check here to configure the default column
+      ids: [],
+      pagination: {},
+      userId: "",
+      seleId: "",
+      groupName: "",
+      remark: "",
+      dataSource: [],
+      groupNameValue: "",
+      ramarkValue: "",
+      count: 2,
+      addVisible: false,
+      EditVisible: false,
+      columns: [
+        {
+          title: "序号",
+          dataIndex: "num",
+          scopedSlots: { customRender: "num" },
+        },
+        {
+          title: "任务组名",
+          dataIndex: "groupName",
+          width: "30%",
+          scopedSlots: { customRender: "groupName" },
+        },
+        {
+          title: "创建时间",
+          dataIndex: "createTime",
+        },
+        {
+          title: "备注",
+          dataIndex: "remark",
+          scopedSlots: { customRender: "remark" },
+        }, {
+          title: "状态",
+          dataIndex: "state",
+          scopedSlots: { customRender: "state" },
+        },
+        {
+          title: "管理",
+          dataIndex: "operation",
+          scopedSlots: { customRender: "operation" },
+        },
+      ],
+      layout: {
+        labelCol: { span: 4 },
+        wrapperCol: { span: 14 },
+      },
+    };
+  },
+  //页面加载的时候就开始获取数据
+  mounted() {
+    this.refresh();
+  },
+  //方法
+  methods: {
+    // 按照任务组名进行查找
+    onSearchByTaskGroupName(){
+
+    },
+    onCellChange(key, dataIndex, value) {
+      const dataSource = [...this.dataSource];
+      const target = dataSource.find((item) => item.key === key);
+      if (target) {
+        target[dataIndex] = value;
+        this.dataSource = dataSource;
+      }
+    },
+
+    viewItem(index) {
+      var taskGroupId = this.dataSource[index].id;
+      this.$cookies.set("taskGroupId", taskGroupId);
+      this.$router.push("/CreateTask");
+    },
+    onSelectChange(selectedRowKeys) {
+      // console.log("selectedRowKeys changed: ", selectedRowKeys);
+      this.selectedRowKeys = selectedRowKeys;
+    },
+    // 上传任务组
+    upGroup() {
+      var t = this;
+      this.userId = this.$cookies.get("loginId");
+      //  console.log(this.userId);
+      for (var i = 0; i < this.selectedRowKeys.length; i++) {
+        console.log(this.selectedRowKeys[i]);
+        task
+          .confirmTaskGroupAndDiagG({
+            groupId: this.selectedRowKeys[i],
+            userId: this.userId,
+          })
+          .then((r) => {
+            if (r.code == 200) {
+              t.$message.success("任务组上传成功");
+              t.refresh();
+            } else {
+              t.$message.error("任务组上传失败"+r.message);
+            }
+
+            //  console.log(r);
+          });
+      }
+    },
+    //单个的删除任务组index
+    onDelete(index) {
+      const dataSource = [...this.dataSource];
+      var id = this.dataSource[index].id;
+      // var id = this.dataSource[index].id;
+      // console.log( this.dataSource[index]);
+      var t = this;
+      this.$confirm({
+        title: "你确定要删除任务组吗？",
+        okText: "确认",
+        okType: "danger",
+        cancelText: "取消",
+        onOk() {
+          task
+            .deleteTaskGroupByIdG({
+              groupId: id,
+            })
+            .then((r) => {
+              // console.log(r);
+              if (r.code == 200) {
+                t.$message.success("用户删除成功");
+              } else {
+                t.$message.error("用户删除失败"+r.message);
+              }
+            });
+        },
+        onCancel() {
+          // console.log("Cancel");
+        },
+      });
+
+      this.refresh();
+    },
+
+    //删除被选择的任务组
+    onSelectDelete() {
+      // console.log(this.selectedRowKeys);
+      var t = this;
+      const dataSource = [...this.dataSource];
+
+      this.$confirm({
+        title: "你确定要删除任务组吗？",
+        okText: "确认",
+        okType: "danger",
+        cancelText: "取消",
+        onOk() {
+          for (var i = 0; i < t.selectedRowKeys.length; i++) {
+            var id = t.selectedRowKeys[i];
+            task
+              .deleteTaskGroupByIdG({
+                groupId: id,
+              })
+              .then((r) => {
+                // console.log(r);
+
+                if (r.code == 200) {
+                  t.$message.success("用户删除成功");
+                } else {
+                  t.$message.error("用户删除失败"+r.message);
+                }
+                t.refresh();
+              });
+          }
+        },
+        onCancel() {
+          // console.log("Cancel");
+        },
+      });
+    },
+
+    //点击编辑修改任务组名和备注
+    onEdit(index) {
+      // const dataSource = [...this.dataSource];
+      this.seleId = this.dataSource[index].id;
+      this.groupNameValue = this.dataSource[index].groupName;
+      this.ramarkValue = this.dataSource[index].remark; //这里数据确实已经赋值完成
+      //  console.log(this.groupNameValue, this.ramarkValue);
+      //  this.refresh();
+      this.EditVisible = true;
+    },
+   
+    // 确认修改该任务组
+    Edit() {
+      // console.log(this.newRemark);
+      // console.log(this.seleId);   //选择显示的任务组ID
+      // console.log(this.newGroupName, this.newRemark);
+      Task.updateTaskGroupG({
+        groupId: this.seleId,
+        groupName: this.groupNameValue,
+        remark: this.ramarkValue,
+      }).then((r) => {
+        console.log(r);
+         this.refresh();
+      });
+     
+      this.EditVisible = false;
+    },
+
+    //点击创建任务组，显示可编辑输入框
+    handleAdd() {
+      this.addVisible = true;
+    },
+
+    // 在点击ok的时候来添加任务组
+    hideModal() {
+      var t = this;
+      this.addVisible = false;
+      this.userId = this.$cookies.get("loginId");
+      Task.createTaskGroupG({
+        userId: this.userId,
+        groupName: this.groupName,
+        remark: this.remark,
+      }).then((r) => {
+        console.log(r);
+        if (r.code == 200) {
+          t.$message.success("添加成功");
+          t.refresh();
+        } else {
+          // console.log(r.message);
+          t.$message.error("任务组添加失败," + r.message);
+        }
+      });
+    },
+
+    refresh() {
+      this.userId = this.$cookies.get("loginId");
+      this.pagination.current = 1;
+      Task.getTaskGroupPageG({
+        userId: this.userId,
+        state: 1,
+      }).then((r) => {
+        var js = JSON.parse(r.result);
+        // console.log(js);
+        // 这里得到的数据就只有10个
+        const pagination = { ...this.pagination }; //重新定义获取新的页面
+        //  console.log();
+        // 读取总的数据量是12个
+        pagination.total = js.total;
+        pagination.pageSize = js.pageSize;
+        // pagination.current = js.current;
+        this.loading = false;
+        this.dataSource = js.list; //把数据装进table里面
+        // console.log(pagination);
+        this.pagination = pagination; //获取
+        // this.pagination.size = pagination.size;
+        // console.log(this.pagination);
+      });
+    },
+
+    //点击某一页面时，网页加载到当前的数据
+    handleTableChange(pagination, filters, sorter) {
+      const pager = { ...this.pagination };
+      pager.current = pagination.current;
+      this.pagination = pager;
+      // console.log(pagination);
+      this.$api.get(
+        "/Task/getTaskGroupPage",
+        {
+          page: this.pagination.current,
+          size: 10,
+        },
+        (r) => {
+          // console.log(r);
+          var js = JSON.parse(r.result);
+
+          // 这里得到的数据就只有10个
+          const pagination = { ...this.pagination }; //重新定义获取新的页面
+          //  console.log(pagination);
+          // 读取总的数据量是12个
+          pagination.total = js.total;
+
+          this.loading = false;
+          this.dataSource = js.list; //把数据装进table里面
+          this.pagination = pagination; //获取
+          // console.log(this.pagination);
+        }
+      );
+    },
+  },
+};
+</script>
+
+<style>
+.editable-cell {
+  position: relative;
+}
+
+.editable-cell-input-wrapper,
+.editable-cell-text-wrapper {
+  /* padding-right: 24px; */
+}
+
+.editable-cell-text-wrapper {
+  /* padding: 5px 24px 5px 5px; */
+}
+
+.editable-cell-icon,
+.editable-cell-icon-check {
+  position: absolute;
+  right: 0;
+  /* width: 20px; */
+  cursor: pointer;
+}
+
+.editable-cell-icon {
+  /* line-height: 18px; */
+  /* display: none; */
+}
+
+.editable-cell-icon-check {
+  /* line-height: 28px; */
+}
+
+.editable-cell:hover .editable-cell-icon {
+  display: inline-block;
+}
+
+.editable-cell-icon:hover,
+.editable-cell-icon-check:hover {
+  color: #108ee9;
+}
+
+.editable-add-btn {
+  margin-bottom: 8px;
+}
+</style>

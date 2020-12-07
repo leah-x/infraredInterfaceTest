@@ -1,0 +1,636 @@
+<template>
+  <div>
+    <a-row type="flex" justify="start" align="middle" style="height: 48px">
+      <a-col style="height: 100%" :span="20">
+        <span  style=" color: black; float:left" @click="goBack">
+          <a-icon type="left" />返回上层
+        </span>
+        <a-upload
+          name="file"
+          :multiple="true"
+          :showUploadList="false"
+          :remove="handleRemove"
+          :beforeUpload="beforeUpload"
+          style="margin-left: -15%"
+        >
+          <!-- @change="handleChange" -->
+          <a-button > <a-icon type="upload" />选择图片 </a-button>
+        </a-upload>
+        <a-button
+          type="primary"
+          :disabled="fileList.length === 0"
+          :loading="uploading"
+          style="margin-top: 16px"
+          @click="handleUpload"
+        >
+          {{ uploading ? "上传中" : "开始上传" }}
+        </a-button>
+        <font>此次已上传文件数：{{ isLoadFiles }}</font>
+        <a-button size="small" type="primary" @click="configTask()">
+          批量确认选中的任务
+        </a-button>
+        <a-button
+          style="width: 30%"
+          @click="onSelectDelete"
+          type="primary"
+          size="small"
+        >
+          批量删除选中的任务
+        </a-button>
+      </a-col>
+    </a-row>
+    <!----- 任务组的表格 ----->
+    <a-table
+      :row-selection="{
+        selectedRowKeys: selectedRowKeys,
+        onChange: onSelectChange,
+      }"
+      :rowKey="(record) => record.id"
+      :columns="columns"
+      :data-source="dataSource"
+      :pagination="pagination"
+      show-overflow-tooltip
+      :customRow="customRow"
+      @change="handleTableChange"
+    >
+      <span slot="num" slot-scope="text, record, index">
+        {{
+          (pagination.current - 1) * pagination.pageSize + parseInt(index) + 1
+        }}
+      </span>
+      <!-- 钩子函数 -->
+      <span slot="taskState" slot-scope="text">
+        <a-tag :color="text == 1 ? 'red' : 'green'">
+          {{ text == 1 ? "已上传" : "已确认" }}
+        </a-tag>
+      </span>
+      <span slot="action" slot-scope="text, record, index">
+        <a @click="showDrawer(index)">详情</a>
+        <a-divider type="vertical" />
+        <!-- <a @click="distributeTask(record.key,record.taskName)">派发</a> -->
+        <!-- <a-divider type="vertical"/> -->
+        <a @click="deleteItem(index)">删除</a>
+        <a-divider type="vertical" />
+        <a @click="Editshow(index)">修改</a>
+      </span>
+    </a-table>
+
+    <!-- 修改任务对话框  -->
+    <a-modal
+      v-model="editVisible"
+      title="修改任务"
+      ok-text="确认修改"
+      cancel-text="取消"
+      @ok="Edit"
+    >
+      <!-- :model="distributeTaskData" v-model="remark"-->
+      <a-form-model>
+        <a-form-model-item>
+          <a-upload
+            name="file"
+            :multiple="true"
+            :file-list="editFileList"
+            :showUploadList="false"
+            :beforeUpload="beforeUpload"
+            :remove="handleRemove"
+          >
+            <!-- @change="handleChange" -->
+            <a-button size="small"> <a-icon type="upload" />选择图片 </a-button>
+          </a-upload>
+        </a-form-model-item>
+        <a-form-model-item label="任务名">
+          <a-input @change="getTaskName" />
+        </a-form-model-item>
+        <a-form-model-item label="备注">
+          <a-input @change="getTaskRemark" />
+        </a-form-model-item>
+      </a-form-model>
+    </a-modal>
+
+    <!--   设置抽屉的样式  :closable="false"  -->
+    <a-drawer
+      title="任务详情"
+      placement="right"
+      :visible="visible"
+      width="50%"
+      :after-visible-change="afterVisibleChange"
+      @close="onClose"
+    >
+      <a-form-model
+        style="width: 100%"
+        :model="diagResults"
+        :label-col="labelCol"
+        :wrapper-col="wrapperCol"
+      >
+        <a-form-model-item label="所属任务">
+          <a-input v-model="diagResults.taskName" :disabled="disabled" />
+        </a-form-model-item>
+        <a-form-model-item label="照片状态">
+          <a-tag
+            :disabled="disabled"
+            style="width: 100%"
+            :color="diagResults.taskState == 1 ? 'green' : 'volcano'"
+          >
+            {{ diagResults.taskState == 1 ? "正常" : "异常" }}
+          </a-tag>
+        </a-form-model-item>
+        <a-list
+          :grid="{ gutter: 16 }"
+          justify="space-around"
+          style="margin: 16px"
+        >
+          <a-list-item>
+            <a-card>
+              <a-row type="flex" justify="space-around">
+                <a-col justify="space-around">
+                  <a-avatar
+                    shape="square"
+                    :size="200"
+                    :src="diagResults.devicePic"
+                  />
+                </a-col>
+                <a-col>
+                  <a-avatar
+                    shape="square"
+                    :size="200"
+                    :src="diagResults.deviceRedPic"
+                  />
+                </a-col>
+              </a-row>
+              <a-row style="margin-top: 5px" type="flex" justify="space-around">
+                <a-col justify="space-around">
+                  <a-avatar
+                    shape="square"
+                    :size="200"
+                    :src="diagResults.nameplatePic"
+                  />
+                </a-col>
+                <a-col>
+                  <a-avatar
+                    shape="square"
+                    :size="200"
+                    :src="diagResults.nameplateRedPic"
+                  />
+                </a-col>
+              </a-row>
+            </a-card>
+          </a-list-item>
+        </a-list>
+        <a-form-model-item label="备注">
+          <a-input v-model="diagResults.remark" :disabled="disabled" />
+        </a-form-model-item>
+      </a-form-model>
+    </a-drawer>
+  </div>
+</template>
+
+<script>
+import Task from "../../netapi/task";
+import axios from "axios";
+
+const columns = [
+  {
+    title: "序号",
+    dataIndex: "num",
+    scopedSlots: { customRender: "num" },
+  },
+  {
+    title: "所属任务组",
+    dataIndex: "belongTaskGroup",
+  },
+  {
+    title: "任务名",
+    dataIndex: "taskName",
+  },
+  {
+    title: "创建时间",
+    dataIndex: "createTime",
+  },
+  {
+    title: "状态",
+    dataIndex: "taskState",
+    scopedSlots: { customRender: "taskState" },
+  },
+  {
+    title: "管理",
+    key: "Action",
+    scopedSlots: { customRender: "action" },
+  },
+];
+var diagResults = {
+  taskName: "",
+  taskState: "",
+  createTime: "",
+  autoAdvice: "",
+  devicePic: "",
+  deviceRedPic: "",
+  nameplatePic: "",
+  nameplateRedPic: "",
+  remark: "",
+  // remark:'这是一串长长的任务备注，用以显示额外信息'
+};
+
+export default {
+  name: "CreateTask",
+
+  data() {
+    return {
+      dataSource: [], //数据源
+      columns,
+      pagination: {},
+      visible: false,
+      editVisible: false,
+      selectedRowKeys: [], // Check here to configure the default column
+      ids: [],
+      groupTaskVisible: false,
+      groupTaskViewVisible: false,
+      distributeVisible: false,
+      fileList: [],
+      tempList: [],
+      uploading: false,
+      isLoadFiles: 0,
+      editFileList: [],
+      TaskRemark: "",
+      taskId: "",
+      TaskName: "",
+      group: {
+        groupName: "",
+        remark: "",
+      },
+      distributeTaskData: {
+        taskName: "",
+        executeUser: "",
+      },
+      disabled: true,
+      labelCol: { span: 4 },
+      wrapperCol: { span: 14 },
+      diagResults,
+    };
+  },
+
+  computed: {
+    hasSelected() {
+      return this.selectedRowKeys.length > 0;
+    },
+  },
+
+  mounted() {
+    this.refresh();
+  },
+
+  methods: {
+    /**
+     **返回上一层的路由
+     *
+     **/
+    goBack() {
+      this.$router.go(-1);
+    },
+    /**
+     * 用户点击移除文件
+     **/
+    handleRemove(file) {
+      const index = this.fileList.indexOf(file);
+      const newFileList = this.fileList.slice();
+      newFileList.splice(index, 1);
+      this.fileList = newFileList;
+
+      const i = this.editFileList.indexOf(file);
+      const neweditFileList = this.editFileList.slice();
+      neweditFileList.splice(i, 1);
+      this.editFileList = neweditFileList;
+    },
+    /**
+     * 上传一个图片数组
+     */
+    handleUpload() {
+      this.uploading = true;
+      if (this.fileList.length % 4 !== 0) {
+        this.$message.info("上传的图片数目不符，必须是4的倍数！");
+      }
+      // 数组按照传入文件名排序，并且判断文件名格式是否为（123.jpg） todo
+
+      // 排序后每4张图片调用一次并做好重传准备 todo
+      for (let i = 0; i < this.fileList.length; i += 4) {
+        var list = this.fileList.slice(i, i + 4); //生成一个新的数组，然后将这个数组的照片上传
+        this.upload4Pictures(list);
+      }
+      this.uploading = false;
+    },
+    /**
+     * 上传四个文件
+     * @param lists 文件数组
+     */
+    upload4Pictures(lists) {
+      let formData = new FormData();
+      let list = lists;
+      for (let i = 0; i < list.length; i++) {
+        formData.append("files", list[i]);
+      }
+      var groupId = this.$cookies.get("taskGroupId");
+      var userId = this.$cookies.get("loginId");
+      // console.log(groupId, userId);
+      formData.append("groupId", groupId);
+      formData.append("userId", userId);
+      formData.append("taskName", "武汉第一任务组" + new Date().getMilliseconds());
+      let config = {
+        processData: false,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      };
+      Task.uploadFilesP(formData, config)
+        .then((data) => {
+          // console.log(data);
+          if (data.code == 200) {
+            this.$message.info("文件上传成功！");
+            this.isLoadFiles = this.isLoadFiles + 4;
+            this.fileList = [];
+          } else {
+            this.$message.error("文件上传失败！" + data.message);
+          }
+          this.refresh();
+        })
+        .catch((error) => {
+          console.log("error");
+        });
+    },
+    //设置抽屉的可见性
+    afterVisibleChange(val) {
+      // console.log('visible', val);
+    },
+    //点击table行的时候可触发的事件
+    customRow(record, index) {
+      return {
+        on: {
+          click: (event) => {
+            // this.visible = true;
+            //  console.log('messege');
+            // console.log('-------------------------');
+            // console.log(index);
+          },
+        },
+      };
+    },
+    // 显示详情
+    showDrawer(index) {
+      this.visible = true;
+      // console.log(this.dataSource[index]);
+      var data = this.dataSource[index];
+      // console.log(data.taskName);
+      this.diagResults.taskName = data.taskName;
+      this.diagResults.taskState = data.taskState;
+      this.diagResults.createTime = data.createTime;
+      this.diagResults.devicePic = "http://192.168.1.201:8900/1.jpg";
+      // console.log( this.diagResults.devicePic);
+      // data.deviceRedPic/data.devicePic/data.nameplatePic/data.nameplateRedPic
+      this.diagResults.deviceRedPic = "http://192.168.1.201:8900/2.jpg";
+      this.diagResults.nameplatePic = "http://192.168.1.201:8900/3.jpg";
+      this.diagResults.nameplateRedPic = "http://192.168.1.201:8900/4.jpg";
+      this.diagResults.remark = data.remark;
+    },
+
+    onClose() {
+      this.visible = false;
+    },
+
+    handleChange(info) {
+      this.fileList = info.fileList;
+      const status = info.file.status; //如果已经上传完就获取已经上传的文件
+      // console.log(info.fileList.length);
+      if (status !== "uploading") {
+        // console.log(info.file);
+        // console.log(info.fileList);
+      }
+    },
+
+    //长传头像前校验,在文件上传前得到的文件数组是
+    // 可以用于上传的，但是在change处上传的数组是不能用于上传的
+    beforeUpload(file) {
+      this.isLoadFiles = 0;
+      this.fileList = [...this.fileList, file];
+      this.editFileList = [...this.editFileList, file];
+      return false;
+    },
+
+    //反馈已经被选择到的数据项
+    onSelectChange(selectedRowKeys) {
+      this.selectedRowKeys = selectedRowKeys;
+      // console.log(this.selectedRowKeys);
+    },
+    //确认提交任务
+    configTask() {
+      var t = this;
+      //  console.log(this.selectedRowKeys[0]);
+      for (var i = 0; i < this.selectedRowKeys.length; i++)
+        Task.configTaskG({
+          taskId: this.selectedRowKeys[i],
+        }).then((r) => {
+          t.refresh();
+          //  console.log(r);
+        });
+    },
+
+    createGroupTask() {
+      this.groupTaskVisible = true;
+    },
+
+    createGroupTaskConfirm() {
+      this.$message.info("创建成功！");
+      this.groupTaskVisible = false;
+    },
+    //点击删除单个的任务
+    deleteItem(index) {
+      console.log(index);
+      const t = this;
+      const dataSource = [...this.dataSource];
+      var id = this.dataSource[index].id;
+      this.$confirm({
+        title: "确认删除这个任务?",
+        okText: "确认",
+        okType: "danger",
+        cancelText: "取消",
+        onOk() {
+          Task.deleteTaskByIdG({
+            taskId: id,
+          }).then((r) => {
+            if (r.code == 200) {
+              t.$message.success("删除任务成功。");
+            } else {
+              t.$message.error("删除失败" + r.message);
+            }
+            // console.log(r);
+          });
+        },
+        onCancel() {},
+      });
+      this.refresh();
+    },
+
+    //删除被选择的任务组
+    onSelectDelete() {
+      // console.log(this.selectedRowKeys);
+      var t = this;
+
+      this.$confirm({
+        title: "你确定要删除任务组吗？",
+        okText: "确认",
+        okType: "danger",
+        cancelText: "取消",
+        onOk() {
+          for (var i = 0; i < t.selectedRowKeys.length; i++) {
+            var id = t.selectedRowKeys[i];
+            Task.deleteTaskByIdG({
+              taskId: id,
+            }).then((r) => {
+              if (r.code == 200) {
+                t.$message.success("用户删除成功");
+              } else {
+                t.$message.error("用户删除失败");
+              }
+              t.refresh();
+            });
+          }
+        },
+        onCancel() {
+          // console.log("Cancel");
+        },
+      });
+    },
+    //修改任务信息
+    Editshow(index) {
+      this.editVisible = true;
+      this.taskId = this.dataSource[index].id;
+    },
+
+    // 拿到上传的图片列表
+    Edit() {
+      const formData = new FormData();
+      let list = this.editFileList;
+      // console.log(list.length);
+      for (let i = 0; i < list.length; i++) {
+        formData.append("files", list[i]);
+        // console.log(list[i]);
+      }
+
+      formData.append("taskId", this.taskId);
+      formData.append("taskName", this.TaskName);
+      formData.append("remark", this.TaskRemark);
+
+      axios({
+        url: "http://192.168.1.5:8891/Task/updateTask",
+        method: "post",
+        processData: false,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        data: formData,
+      })
+        .then((data) => {
+          // console.log(data.data);
+          if (data.data.code == 200) {
+            this.$message.info("任务修改成功！");
+            this.fileList = [];
+          } else {
+            this.$message.error("任务修改失败！" + data.data.message);
+          }
+          this.refresh();
+        })
+        .catch((error) => {
+          console.log("error");
+        });
+      this.editVisible = false;
+    },
+
+    // 拿到修改后的名称
+    getTaskName(e) {
+      // console.log(e.target.value);
+      this.TaskName = e.target.value;
+    },
+    // 拿到最新的备注
+    getTaskRemark(e) {
+      // console.log(e.target.value);
+      this.TaskRemark = e.target.value;
+    },
+    //载入数据
+    refresh() {
+      var taskGroupId = this.$cookies.get("taskGroupId");
+      // console.log(taskGroupId);
+      var userId = this.$cookies.get("loginId");
+      this.pagination.current = 1;
+      Task.getTaskPageG({
+        userId: userId,
+        groupId: taskGroupId,
+        state: -1,
+      }).then((r) => {
+        // console.log(r);
+        var js = JSON.parse(r.result);
+        // console.log(js.list);
+        // 这里得到的数据就只有10个
+        const pagination = { ...this.pagination }; //重新定义获取新的页面
+        //  console.log(js);
+        // 读取总的数据量是12个
+        pagination.total = js.total;
+        pagination.pageSize = js.pageSize;
+        this.loading = false;
+        this.dataSource = js.list; //把数据装进table里面
+        // console.log(js.list);
+        this.pagination = pagination; //获取
+        // console.log(this.pagination);
+      });
+    },
+
+    //点击某一页面时，网页加载到当前的数据
+    handleTableChange(pagination, filters, sorter) {
+      var taskGroupId = this.$cookies.get("taskGroupId");
+      // console.log(taskGroupId);
+      var userId = this.$cookies.get("loginId");
+      const pager = { ...this.pagination };
+      pager.current = pagination.current;
+      this.pagination = pager;
+      // console.log(pagination);
+      Task.getTaskPageG({
+        userId: userId,
+        groupId: taskGroupId,
+        state: -1,
+        page: this.pagination.current,
+        size: 10,
+      }).then((r) => {
+        var js = JSON.parse(r.result);
+        // console.log(r);
+
+        // 这里得到的数据就只有10个
+        const pagination = { ...this.pagination }; //重新定义获取新的页面
+        //  console.log(pagination);
+        // 读取总的数据量是12个
+        pagination.total = js.total;
+
+        this.loading = false;
+        this.dataSource = js.list; //把数据装进table里面
+        this.pagination = pagination; //获取
+        // console.log(this.pagination);
+      });
+    },
+
+    distributeTask(id, taskName) {
+      this.distributeVisible = true;
+      this.distributeTaskData.taskName = taskName;
+    },
+
+    showTaskGroup() {
+      this.groupTaskViewVisible = true;
+    },
+
+    distributeTaskConfirm() {
+      this.$message.info("派发成功！");
+    },
+  },
+};
+</script>
+
+<style scoped>
+* {
+  margin: 0;
+  padding: 0;
+}
+</style>

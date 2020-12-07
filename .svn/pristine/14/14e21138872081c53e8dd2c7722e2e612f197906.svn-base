@@ -1,0 +1,357 @@
+<template >
+  <div style="width: 100vw; height: 100vh">
+    <a-layout class="max-a-layout" id="components-layout-demo-top-side-2">
+      <!-- 网页头部信息模块 -->
+      <a-layout-header class="header">
+        <a-row align="middle">
+          <!-- 系统介绍 -->
+          <a-col :xs="2" :sm="4" :md="6" :lg="8" :xl="7"> </a-col>
+          <!-- 标题 -->
+          <a-col :xs="20" :sm="16" :md="12" :lg="8" :xl="10">
+            <h1 style="color: #7de2d8; margin-top: 1%; font-size: 2em">
+              红外图像智能诊断分析系统
+            </h1>
+          </a-col>
+          <!-- 右边的时间展示及下拉选择框 -->
+          <a-col :xs="2" :sm="4" :md="6" :lg="8" :xl="7">
+            <div class="timeBox" style="float: right">
+              <span style="color: #36cfc9"
+                >{{ getCurrentData() }} &#8197;&#8197;&#8197;</span
+              >&#8197;&#8197;
+              <!-- <a-date-picker
+                class="nowTime"
+                :defaultValue="moment(getCurrentData(), 'YYYY-MM-DD')"
+                :showToday="false"
+                disabled
+              ></a-date-picker> -->
+              <!-- 右侧下拉框模块 -->
+              <a-dropdown>
+                <span class="AdministratorBox" @click="goLoginUser">
+                  管理员
+                  <a-icon type="down" />
+                </span>
+                <a-menu
+                  style="
+                    margin-top: -25%;
+                    background-color: #001529;
+                    color: #e6fffb;
+                  "
+                  slot="overlay"
+                  @click="onClick"
+                >
+                  <a-menu-item @click="close" style="color: #e6fffb" key="3"
+                    >退出登录</a-menu-item
+                  >
+                </a-menu>
+              </a-dropdown>
+            </div>
+          </a-col>
+        </a-row>
+      </a-layout-header>
+
+      <a-layout>
+        <!-- 左边的选择框内容 -->
+        <a-layout-sider collapsed-width="0" width="13%">
+          <a-menu
+            style="width: 100%; height: 100%; margin-top: 10px"
+            :default-selected-keys="['1']"
+            :default-open-keys="['sub1']"
+            mode="inline"
+            :theme="theme"
+            :selected-keys="[current]"
+            @click="handleClick"
+          >
+            <!-- @click="gomainPage" style="display:none;"-->
+            <a-menu-item v-show="fristShow" @click="gofrist" key="1">
+              <a-icon type="home" />&#8197;
+              首&#8197;&#8197;&#8197;页&#8197;&#8197;
+            </a-menu-item>
+
+            <a-menu-item
+              v-show="taskShow"
+              @click="gocreateTaskGroup"
+              key="create"
+            >
+              <a-icon type="solution" />检测任务
+            </a-menu-item>
+
+            <!-- </a-sub-menu> -->
+            <a-menu-item
+              v-show="diagShow"
+              key="detection"
+              @click="goTaskGroupDiagInfo"
+            >
+              <a-icon type="robot" />&#8197;诊断管理
+            </a-menu-item>
+
+            <a-menu-item v-show="reportShow" @click="goReport" key="7">
+              <a-icon type="file-text" /> 报告管理
+            </a-menu-item>
+
+            <a-menu-item v-show="FlawShow" key="5" @click="goFlawShow">
+              <a-icon type="alert" />&#8197;缺陷管理
+            </a-menu-item>
+
+            <a-sub-menu v-show="userShow" key="user">
+              <span slot="title">
+                &#8197; &#8197; <a-icon type="file-text" />
+                <span> 用户管理</span>
+              </span>
+              <a-menu-item key="userInfo" @click="goUserinfo">
+                用户信息
+              </a-menu-item>
+              <a-menu-item key="role" @click="goRole"> 所有角色 </a-menu-item>
+            </a-sub-menu>
+          </a-menu>
+        </a-layout-sider>
+        <!-- //内容面板部分  padding: '12px',style="padding: 0 12px 12px"-->
+
+        <a-layout>
+          <a-layout-content
+            :style="{
+              padding: '24px',
+              margin: 0,
+              minHeight: '280px',
+              overflowY: 'auto',
+            }"
+          >
+            <!-- overflow: 'initial', background: rgba(106, 213, 240, 0.2); -->
+
+            <div
+              style="
+                padding: 15px;
+                background: rgba(106, 213, 240, 0.2);
+                margin-top: -1%;
+                margin-left: -1%;
+              "
+            >
+              <router-view></router-view>
+            </div>
+            <!-- <div style="background:black;height:20px;" >
+             <span>底部</span>
+            </div> -->
+          </a-layout-content>
+
+          <a-layout-footer style="height: 5%; text-align: center">
+            Ant Design ©2018 Created by Ant UED
+          </a-layout-footer>
+        </a-layout>
+      </a-layout>
+    </a-layout>
+  </div>
+</template>
+
+<script>
+import moment from "moment";
+import User from "../netapi/user";
+
+export default {
+  name: "home",
+  data() {
+    return {
+      current: "1",
+      theme: "dark",
+      collapsed: false,
+      visible1: false,
+      visible3: false,
+      userId: "",
+      roleId: "",
+      premId: [],
+      loginUserId: "",
+      layout: {
+        labelCol: { span: 4 },
+        wrapperCol: { span: 14 },
+      },
+      fristShow: false,
+      taskShow: false,
+      diagShow: false,
+      reportShow: false,
+      FlawShow: false,
+      userShow: false,
+    };
+  },
+  // 页面载入时就转入该函数
+  mounted() {
+    this.getCurrentData();
+    this.getUserRoleId();
+    this. gofrist();
+    // this.controlModel();
+  },
+  methods: {
+    moment,
+    handleClick(e) {
+      // console.log("click ", e);
+      this.current = e.key;
+    },
+    // 得到当前的时间
+    getCurrentData() {
+      var time = new Date();
+      // console.log(new Date().toLocaleDateString());
+      return new Date().toLocaleDateString(); //得到当前的年月日
+    },
+    // 得到当前用户的角色id及权限
+    getRolePrem() {
+      this.userId = this.$cookies.get("loginId");
+    },
+    // 响应("loginUserInformation")this.userId
+    goLoginUser() {
+      this.userId = this.$cookies.get("loginId");
+      this.$router.push({
+        path: "loginUser",
+        query: {
+          Id: this.userId,
+          queryName: "query",
+        },
+      });
+    },
+
+    onClick({ key }) {
+      if (key == 2) {
+        this.visible2 = true;
+      } else if (key == 3) {
+        this.visible3 = true;
+      }
+    },
+    confirm(e) {
+      // this.$message.success("Click on Yes");
+    },
+    // 系统的退出弹框
+    close() {
+      let t = this;
+      this.$confirm({
+        title: "退出登录",
+        content: "是否确认登录？",
+        okText: "确认",
+        cancelText: "取消",
+        onOk() {
+          t.$router.push("/");
+        },
+      });
+    },
+    gofrist() {
+      this.$router.push("/mainPage");
+    },
+    goUserinfo() {
+      this.$router.push("userinfo");
+    },
+    goRole() {
+      this.$router.push("/role");
+    },
+    gocreateTaskGroup() {
+      this.$router.push("/createTaskGroup");
+    },
+    goDoneTask() {
+      this.$router.push("/DoneTask");
+    },
+    goTaskGroupDiagInfo() {
+      this.$router.push("/taskGroupDiagInfo");
+    },
+
+    goExecuteTask() {
+      this.$router.push("/ExecuteTask");
+    },
+    goFlawShow() {
+      this.$router.push("/flawShow");
+    },
+    goReport() {
+      this.$router.push("/reportShow");
+    },
+    //得到用户角色
+    getUserRoleId() {
+      var userId = this.$cookies.get("loginId");
+      var roleName = "";
+      var t = this;
+      User.getUserRoleG({
+        userId: userId,
+      }).then((r) => {
+        var role = JSON.parse(r.result)[0];
+        this.roleId = role.id;
+        roleName = role.roleName;
+        this.getRolePerm(this.roleId); //获取角色权限
+      });
+    },
+    // 获取权限数组
+    getRolePerm(roleId) {
+      User.getRolePermG({
+        roleId: roleId,
+      }).then((r) => {
+        var prem = JSON.parse(r.result);
+        // console.log(prem);
+        this.controlModel(prem);
+      });
+    },
+    //使用权限Id控制面板
+    controlModel(prem) {
+      // console.log(prem);
+      for (var i = 0; i < prem.length; i++) {
+        var premId = prem[i].id;
+        switch (premId) {
+          case 1:
+            this.fristShow = true;
+            break;
+          case 2:
+            this.taskShow = true;
+            break;
+          case 3:
+            this.diagShow = true;
+            break;
+          case 4:
+            this.reportShow = true;
+
+            break;
+          case 5:
+            this.FlawShow = true;
+
+            break;
+          case 6:
+            this.userShow = true;
+            break;
+        }
+      }
+    },
+  },
+};
+</script>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+}
+.max-a-layout {
+  height: 100%;
+  width: 100%;
+}
+
+.timeBox {
+  /* height: 25px; */
+  border-top: 1px solid #36cfc9;
+  border-bottom: 1px solid #36cfc9;
+}
+.timeBox .nowTime .ant-input[disabled] {
+  color: #36cfc9;
+  background-color: transparent;
+  border: none;
+}
+.nowTime {
+  /* margin-right:10% ; */
+}
+.ant-table {
+  text-align: center;
+  background-color: rgba(106, 213, 240, 0.1);
+}
+.AdministratorBox {
+  display: inline-block;
+  float: right;
+  color: #36cec9;
+}
+.ant-table table {
+  text-align: center;
+}
+.ant-table-thead > tr > th {
+  background-color: rgba(106, 213, 240, 0.1);
+  text-align: center;
+}
+</style>
+
+

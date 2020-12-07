@@ -1,0 +1,248 @@
+<!--
+ * @Author: your name
+ * @Date: 2020-10-10 11:02:14
+ * @LastEditTime: 2020-11-09 09:55:51
+ * @LastEditors: Please set LastEditors
+ * @Description: In User Settings Edit
+ * @FilePath: \infrared\src\components\login.vue
+-->
+<template>
+  <div class="big">
+    <a-row style="height: 100%">
+      <a-col style="height: 100%" :span="12"> </a-col>
+      <a-col
+        style="height: 100%; text-align: center; background: transparent"
+        :span="12"
+      >
+        <!-- <div style="height: 25%; width: 25%; background: transparent"></div> -->
+        <a-form-model
+          class="login-form"
+          ref="ruleForm"
+          :model="ruleForm"
+          :rules="rules"
+          v-bind="layout"
+          :label-col="{ span: 4, offset: 4 }"
+          :wrapper-col="{ span: 12 }"
+        >
+          <!-- <dv-border-box-8> -->
+          <a-form-model-item> </a-form-model-item>
+          <a-form-model-item
+            style="margin-top: 20%"
+            has-feedback
+            label="登录名"
+            prop="login_name"
+            >&nbsp;
+            <a-input
+              style="color: #fff"
+              v-model="ruleForm.login_name"
+              placeholder="请输入用户名"
+            >
+              <a-icon slot="prefix" type="user" />
+            </a-input>
+          </a-form-model-item>
+          <a-form-model-item
+            style="margin-top: 5%"
+            has-feedback
+            label="密 码"
+            prop="password"
+            >&nbsp;&nbsp;
+            <a-input-password
+              v-model="ruleForm.password"
+              :type="currentSee"
+              placeholder="请输入密码"
+              @keyup.enter="login()"
+              class="passwordchange"
+              autocomplete="off"
+            >
+              <a-icon slot="prefix" type="lock" />
+            </a-input-password>
+          </a-form-model-item>
+          <a-form-model-item
+            style="margin-top: 5%"
+            :wrapper-col="{ span: 14, offset: 5 }"
+          >
+            <a-button
+              type="primary"
+              style="width: 40%"
+              @click="goHome('ruleForm')"
+              >登录</a-button
+            >
+          </a-form-model-item>
+          <a-form-model-item> </a-form-model-item>
+          <!-- </dv-border-box-8> -->
+        </a-form-model>
+      </a-col>
+    </a-row>
+  </div>
+</template>
+
+<script>
+import user from "../netapi/user";
+export default {
+  name: "login",
+  data() {
+    let checkPending;
+    let validatePass = (rule, value, callback) => {
+      if (value === "") {
+        callback(new Error("Please input the password"));
+      } else {
+        if (value !== "") {
+          this.$refs.ruleForm.validateField("checkPass");
+        }
+        callback();
+      }
+    };
+
+    return {
+      ruleForm: {
+        password: "",
+        login_name: "",
+      },
+      userId: "",
+      tag: 1,
+      currentEye: "eye-invisible",
+      currentSee: "password",
+      rules: {
+        // 密码限定大小写字母+数字:
+        login_name: [
+          {
+            required: true,
+            pattern: /^[\u4e00-\u9fa5a-zA-Z0-9\w]+$/g,
+            message: "格式不正确",
+            trigger: "change",
+          },
+          { min: 1, max: 10, message: "长度为1~10", trigger: "blur" },
+        ],
+        //过滤特殊符号和空白
+        password: [
+          {
+            validator: validatePass,
+            required: true,
+            pattern: /^[a-zA-Z0-9]+$/g,
+            message: "格式不正确",
+            trigger: "blur",
+          },
+          { min: 6, max: 10, message: "长度为6~10", trigger: "blur" },
+        ],
+      },
+      layout: {
+        labelCol: { span: 4 },
+        wrapperCol: { span: 14 },
+      },
+    };
+  },
+  methods: {
+    //登录进入Home里面
+
+    goHome(formName) {
+      var t = this;
+      user
+        .userLoginG({ loginName:t.ruleForm.login_name,  passWord:t.ruleForm.password})
+        .then((response) => {
+          //这里使用了ES6的语法
+          //请求成功返回的数据
+          // console.log(JSON.parse(response.result).userId);
+           this.loginName = response.loginName;
+          // console.log(response.code);
+          if (response.code == 200) {
+            // 如果验证成功，则获得该登录用户的Id号
+             this.userId = JSON.parse(response.result).userId;
+             this.$cookies.set('loginId',this.userId);
+
+            //里面是formName规则的验证
+            this.$refs[formName].validate((valid) => {
+              if (valid) {
+                this.$router.push({
+                  name:"home",}); // 通过的逻辑
+              } else {
+                console.log("验证失败");
+                return false;
+              }
+            });
+          }else{
+            // this.rules.login_name. message = response.data.message;
+            alert(response.message);
+          }
+        })
+        .catch(
+          (error) => console.log(error) //请求失败返回的数据
+        );
+
+      // // post的方法
+      // this.$axios({
+      //   method: "post",
+      //   url: "http://192.168.1.201:8891/User/userLogin",
+      //   data: this.qs.stringify({
+      //     loginName: this.ruleForm.login_name,
+      //     passWord: this.ruleForm.password,
+      //   }),
+      // })
+      //   .then((response) => {
+      //     //这里使用了ES6的语法
+      //     //请求成功返回的数据
+      //     // console.log(JSON.parse(response.data.result).userId);
+      //     //  this.loginName = response.loginName;
+
+      //     if (response.data.code == 200) {
+      //       // 如果验证成功，则获得该登录用户的Id号
+      //        this.userId = JSON.parse(response.data.result).userId;
+      //        this.$cookies.set('loginId',this.userId);
+
+      //       //里面是formName规则的验证
+      //       this.$refs[formName].validate((valid) => {
+      //         if (valid) {
+      //           this.$router.push({
+      //             name:"home",}); // 通过的逻辑
+      //         } else {
+      //           console.log("验证失败");
+      //           return false;
+      //         }
+      //       });
+      //     }else{
+      //       // this.rules.login_name. message = response.data.message;
+      //       alert(response.data.message);
+      //     }
+      //   })
+      //   .catch(
+      //     (error) => console.log(error) //请求失败返回的数据
+      //   );
+    },
+    resetForm(formName) {
+      this.$refs[formName].resetFields();
+    },
+  },
+  created(){
+    // fixme 直接跳到主页面方便调试 演示或者其它状态请删除此项
+    // if (true){
+    //   // 如果验证成功，则获得该登录用户的Id号
+    //   this.userId = 1;
+    //   this.$cookies.set('loginId',1);
+    //   this.$router.push({name:"home",});
+    // }
+  }
+};
+</script>
+
+<style>
+* {
+  margin: 0;
+  padding: 0;
+}
+.big {
+  height: 100vh;
+  background: url("../assets/backgroung.png") no-repeat;
+  background-size: cover;
+}
+.login-form {
+  height: 50%;
+  width: 60%;
+  background: #1a5791;
+
+  margin-top: 25%;
+  margin-left: 10%;
+  min-height: 200px;
+}
+.login-form .ant-form-item-required {
+  color: #fff;
+}
+</style>

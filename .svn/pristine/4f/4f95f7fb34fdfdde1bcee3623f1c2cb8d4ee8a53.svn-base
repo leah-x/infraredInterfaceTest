@@ -1,0 +1,520 @@
+<template>
+  <div>
+    <a-row type="flex" justify="start">
+      <a-col :span="8">
+        <a-input-search
+          placeholder="按照用户名搜索"
+          enter-button
+          size="small"
+          style="width: 50%; margin-left: -50%"
+          @search="getUserInfoById"
+        />
+      </a-col>
+      <!-- 添加用户margin-left: -18%-->
+      <a-col style="margin-left: -16%" :span="2">
+        <a-button type="primary" size="small" @click="showModal">
+          添加用户
+        </a-button>
+        <!-- 添加用户对话框 -->
+        <a-modal
+          v-model="userVisible"
+          title="添加用户"
+          cancelText="取消"
+          okText="确认"
+          @ok="adduser"
+        >
+          <a-form-model
+          :rules="rules"
+          :model="form" 
+           ref="form" 
+           :layout="formLayout">
+            <a-form-model-item
+              label="登录名" prop="login_name"
+              :label-col="formItemLayout.labelCol"
+              :wrapper-col="formItemLayout.wrapperCol"
+            >
+              <a-input
+                v-model="form.login_name"
+                
+                placeholder="登录名"
+              />
+            </a-form-model-item>
+            <a-form-model-item
+              :label="passLable" placeholder="密码" prop="password"
+              :label-col="formItemLayout.labelCol"
+              :wrapper-col="formItemLayout.wrapperCol"
+            >
+              <a-input
+                v-model="form.password"
+               
+              />
+            </a-form-model-item>
+            <a-form-model-item
+              label="电话号" prop="phone"
+              :label-col="formItemLayout.labelCol"
+              :wrapper-col="formItemLayout.wrapperCol"
+            >
+              <a-input
+                v-model="form.phone"
+                placeholder="电话号码"
+              />
+            </a-form-model-item>
+            <a-form-model-item
+              label="用户名"  prop="user_true_name"
+              :label-col="formItemLayout.labelCol"
+              :wrapper-col="formItemLayout.wrapperCol"
+            >
+              <a-input
+                v-model="form.user_true_name"
+              
+                placeholder="用户名"
+              />
+            </a-form-model-item>
+            <a-form-model-item>
+              <a-row>
+                <a-col :span="8"> </a-col>
+                <a-col :span="8">
+                  <!-- <a-button @click="adduser" type="primary">
+                    确认添加
+                  </a-button> -->
+                </a-col>
+                <a-col :span="8"> </a-col>
+              </a-row>
+            </a-form-model-item>
+          </a-form-model>
+        </a-modal>
+      </a-col>
+      <a-col style="margin-left: -1%" :span="2">
+        <a-button size="small" @click="refresh">刷新</a-button>
+      </a-col>
+    </a-row>
+    
+
+    <a-table
+      :columns="columns"
+      style="margin-top: 1%"
+      :data-source="dataSource"
+      :pagination="pagination"
+      :loading="loading"
+      :rowKey="(record) => record.id"
+      @change="handleTableChange"
+      :bordered="true"
+    >
+      <span slot="num" slot-scope="text, record, index">
+        {{
+          (pagination.current - 1) * pagination.pageSize + parseInt(index) + 1
+        }}
+      </span>
+
+      <!-- 钩子函数 :rowKey='rowKey'slot-scope="name" 可以用slot-scope来获得每一行的index,可以以此来  -->
+      <span slot="state" slot-scope="text, record, index">
+        <a-switch
+          :default-checked="text == 1"
+          @click="changeState(record, index)"
+          checked-children="停用"
+          un-checked-children="启用"
+        >
+        </a-switch>
+      </span>
+
+      <a-button-group slot="Action" slot-scope="text, record, index">
+        <!-- <span slot="Action" slot-scope="text, record, index"> -->
+        <!-- 确认删除弹出框 -->
+        <a-button size="small" type="danger" @click="deleteUser(record, index)">
+          {{ (text = "删除") }}
+        </a-button>
+        <a-button size="small" @click="changeRole(record, index)">
+          {{ (text = "设置角色") }}
+          <a-modal
+            v-model="changeRoleVisible"
+            title="设置角色"
+            @ok="RoleVisible(record, index)"
+          >
+          </a-modal>
+        </a-button>
+        <!-- 每个用户的详情 -->
+        <a-button size="small" type="primary" @click="goTheUser(record, index)">
+          {{ (text = "详情") }}
+        </a-button>
+
+        <a-modal
+          v-model="changeRoleVisible"
+          title="设置角色"
+          cancelText="取消"
+          okText="确认"
+          @ok="RoleVisible()"
+        >
+          <span>用户角色：</span>
+          <a-select
+            :default-value="defaultRoleName"
+            style="width: 120px"
+            @change="handleChangeRole"
+          >
+            <a-select-option
+              v-for="item in allRoleItem"
+              :key="item.id"
+              :value="item.roleName"
+            >
+              {{ item.roleName }}
+            </a-select-option>
+          </a-select>
+        </a-modal>
+      </a-button-group>
+      <!-- </span> -->
+    </a-table>
+  </div>
+</template>
+
+<script>
+import user from "../../netapi/user";
+const columns = [
+  {
+    title: "序号",
+    dataIndex: "num",
+    scopedSlots: { customRender: "num" },
+    // render:(text,record,index)=>`${index+1}`
+  },
+  {
+    title: "登录名",
+    dataIndex: "loginName",
+  },
+  {
+    title: "用户姓名",
+    dataIndex: "userTrueName",
+    // scopedSlots: { customRender: 'deal_state' },
+  },
+  {
+    title: "操作",
+    dataIndex: "state",
+    scopedSlots: { customRender: "state" },
+  },
+  {
+    title: "管理",
+    key: "Action",
+    scopedSlots: { customRender: "Action" },
+  },
+];
+
+export default {
+  name: "userinfo",
+  data() {
+    return {
+      columns,
+      userVisible: false, //添加用户的对话框
+      formLayout: "horizontal",
+      pagination: {},
+      dataSource: [],
+      allRoleItem: [],
+      loading: false,
+      setDoneVisible: false,
+      form: {
+        login_name: "",
+        password: "",
+        phone: "",
+        user_true_name: "",
+      },
+      rules: {
+        // 密码限定大小写字母+数字:
+       login_name: [
+          {
+            required: true,
+            pattern: /^[\u4e00-\u9fa5a-zA-Z0-9\w]+$/g,
+            message: "只能使用中文、英文字母以及数字",
+            trigger: "change",
+          },
+          { min: 8, max: 16, message: "长度为8~16", trigger: "blur" },
+        ],
+       user_true_name: [
+          {
+            required: true,
+            pattern: /^[\u4e00-\u9fa5a-zA-Z0-9\w]+$/g,
+            message: "只能使用中文、英文字母以及数字",
+            trigger: "change",
+          },
+          { min: 2, max: 32, message: "长度为2~32", trigger: "blur" },
+        ],
+        //过滤特殊符号和空白
+        password: [
+          {
+            required: true,
+            pattern: /^[a-zA-Z0-9\d\w]+$/g,
+            message: "格式不正确",
+            trigger: "blur",
+          },
+          { min: 8, max: 16, message: "长度为8~16", trigger: "blur" },
+        ],
+        phone: [
+          {
+            required: true,
+            pattern: /^[1\d{10}]+$/g,
+            message: "格式不正确",
+            trigger: "blur",
+          },
+          ],
+      },
+      userId: "",
+      roleId: "",
+      roleName: "",
+      defaultRoleName: [],
+      changeRoleVisible: false,
+      changeRoleId: "",
+      dataTotal: "",
+      passLable: "密" + "\xa0\xa0\xa0" + "码",
+    };
+  },
+  //页面加载的时候就开始获取数据
+  mounted() {
+    this.refresh();
+    this.getAllRole();
+  },
+  computed: {
+    formItemLayout() {
+      const { formLayout } = this;
+      return formLayout === "horizontal"
+        ? {
+            labelCol: { span: 4 },
+            wrapperCol: { span: 14 },
+          }
+        : {};
+    },
+  },
+
+  methods: {
+    viewItem(id) {
+      this.$router.push({
+        path: "/defectDetail",
+        query: id,
+      });
+    },
+
+    //改变使用状态
+    changeState(record, index) {
+      var t = this;
+      var id = this.dataSource[index].id;
+      var st = this.dataSource[index].state;
+      if (st === 1) {
+        //先判断该用户是否为启用状态，如果是点击则停用，否则点击就是启用
+        user
+          .stopUserByIdG({
+            userId: id,
+          })
+          .then((r) => {
+            t.refresh();
+          });
+      } else {
+        if (st === 2) {
+          user
+            .enableUserByIdG({
+              userId: id,
+            })
+            .then((r) => {
+              t.refresh();
+            });
+        }
+      }
+    },
+
+    //删除用户的操作
+    deleteUser(record, index) {
+      var id = this.dataSource[index].id;
+      var loginName = this.dataSource[index].loginName;
+      var t = this;
+      var net = this.$api;
+      this.$confirm({
+        title: "你确定要删除" + loginName + "吗？",
+        okText: "确认",
+        okType: "danger",
+        cancelText: "取消",
+        onOk() {
+          user.deleteByIdG({
+            userId: id,
+          });
+          t.$message.success("用户删除成功");
+        },
+        onCancel() {
+          // console.log("Cancel");
+        },
+      });
+      this.refresh();
+    },
+
+    //用户信息页面的点击事件获取该用户的Id和角色
+    changeRole(record, index) {
+      var t = this;
+      // console.log(this.defaultRoleName);
+      this.defaultRoleName.splice(0, 1);
+      this.changeRoleVisible = true;
+      this.userId = this.dataSource[index].id;
+      var dRoleName = [];
+      user
+        .getUserRoleG({ userId: this.userId }) //得到要改变角色的用户Id
+        .then((r) => {
+          // console.log(r); //可以得到用户的角色和角色Id
+
+          var js = JSON.parse(r.result);
+          // console.log(js);
+          if (js.length == 0) {
+            this.roleId = 0;
+            this.roleName = "未设置角色";
+            this.defaultRoleName.push("未设置角色");
+            //  t.defaultRoleName = dRoleName
+          } else {
+            this.roleId = js[0].id;
+            this.roleName = js[0].roleName;
+            t.defaultRoleName.push(js[0].roleName);
+            //  t.defaultRoleName = dRoleName;
+          }
+        });
+
+      //  console.log(t.defaultRoleName );
+    },
+    // ok事件触发的事件
+    RoleVisible() {
+      this.changeRoleVisible = false;
+    },
+    //  选用select框来设定该用户的角色
+    handleChangeRole(value) {
+      // console.log(this.roleId); //得到原角色的Id
+      // console.log(this.userId); //可以得到该用户的Id
+      // console.log(this.roleName); //得到原角色的姓名
+      //  console.log(`${value}`); //得到被选择的用户名
+      //  console.log(this.allRoleItem);
+      for (var i = 0; i < this.allRoleItem.length; i++) {
+        if (this.allRoleItem[i].roleName == `${value}`) {
+          var id = this.allRoleItem[i].id;
+        }
+      }
+      user
+        .updateUserRoleG({
+          userId: this.userId,
+          oldRoleId: this.roleId,
+          newRoleId: id,
+        })
+        .then((r) => {
+          //  console.log(r);
+        });
+    },
+
+    //页面加载的时候将所有角色数据加载出来
+    getAllRole() {
+      user
+        .getRoleAllG({
+          size: 100,
+        })
+        .then((r) => {
+          //  console.log(r.result);
+          var roleData = JSON.parse(r.result);
+          // console.log(roleData.list.length);
+
+          for (var i = 0; i < roleData.list.length; i++) {
+            //  将所有的可选择条目装进选择框
+            var obj = {
+              roleName: roleData.list[i].roleName,
+              id: roleData.list[i].id,
+            };
+            this.allRoleItem.push(obj); //循环得到所有的权限
+          }
+          //  console.log(this.allRoleItem);
+        });
+    },
+
+    // 添加用户对话框的操作
+    showModal() {
+      // console.log(this.userVisible );
+      this.userVisible = true;
+    },
+    adduser(e) {
+      var t = this;
+      user
+        .addUserP({
+          login_name: this.form.login_name,
+          password: this.form.password,
+          phone: this.form.phone,
+          user_true_name: this.form.user_true_name,
+        })
+        .then((r) => {
+          console.log(r);
+          if (r.code == 200) {
+            t.$message.success("用户添加成功");
+          } else {
+            // console.log(r.message);
+            t.$message.error("用户添加失败");
+          }
+        });
+
+      this.userVisible = false;
+      this.refresh();
+    },
+
+    //用户详情
+    goTheUser(record, index) {
+      var oneId = this.dataSource[index].id;
+
+      this.$router.push({
+        path: "loginUser",
+        query: {
+          Id: oneId,
+          Name: "query",
+        },
+      });
+    },
+    //刷新用户列表
+    refresh() {
+      this.pagination.current = 1;
+      user.getUserAllG(null).then((r) => {
+        // console.log(r);
+        var js = JSON.parse(r.result);
+        // 这里得到的数据就只有10个
+        const pagination = { ...this.pagination }; //重新定义获取新的页面
+        // 读取总的数据量是12个
+        pagination.total = js.total;
+        pagination.pageSize = js.pageSize;
+        // pagination.current = js.current;
+        this.loading = false;
+        this.dataSource = js.list; //把数据装进table里面
+        // console.log(js);
+        this.pagination = pagination; //获取
+        // this.pagination.size = pagination.size;
+      });
+    },
+
+    //点击某一页面时，网页加载到当前的数据
+    handleTableChange(pagination, filters, sorter) {
+      const pager = { ...this.pagination };
+      pager.current = pagination.current;
+      this.pagination = pager;
+      // console.log(pagination);
+      user
+        .getUserAllG({
+          page: this.pagination.current,
+          size: 10,
+        })
+        .then((r) => {
+          // console.log(r);
+          var js = JSON.parse(r.result);
+          // 这里得到的数据就只有10个
+          const pagination = { ...this.pagination }; //重新定义获取新的页面
+          //  console.log(pagination);
+          // 读取总的数据量是12个
+          pagination.total = js.total;
+
+          this.loading = false;
+          this.dataSource = js.list; //把数据装进table里面
+          this.pagination = pagination; //获取
+          // console.log(this.pagination);
+        });
+    },
+
+    //获取个人用户信息
+    getUserInfoById(value) {},
+    onDateAfterSearch(value) {},
+    onDateBeforeSearch(value) {},
+
+    setTaskGroupConfirm(id) {},
+  },
+};
+</script>
+
+<style scoped>
+</style>
+
